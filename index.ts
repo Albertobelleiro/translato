@@ -1,1 +1,10 @@
-console.log("Hello via Bun!");
+import index from "./index.html";
+
+Bun.serve({
+  routes: {
+    "/": index,
+  },
+  development: { hmr: true, console: true },
+});
+
+console.log("Translato running on http://localhost:3000");

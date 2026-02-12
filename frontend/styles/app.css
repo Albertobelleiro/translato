@@ -1,0 +1,397 @@
+@import "@fontsource-variable/inter";
+
+/* ===========================================
+   Design-system tokens (mirrored from tokens.css)
+   Dark theme is default — no manual overrides needed.
+   =========================================== */
+:root {
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Spacing */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-medium: 180ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Shadows */
+  --shadow-overlay-soft: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+
+  /* Dark palette */
+  --color-bg-canvas: #1A1D21;
+  --color-bg-surface: #1A1D21;
+  --color-bg-hover: #242529;
+  --color-text-primary: #EEEFF1;
+  --color-text-secondary: #A1A4A7;
+  --color-text-muted: #A1A4A7;
+  --color-border-stroke: #2F3033;
+  --color-icon: #A1A4A7;
+  --color-accent-500: #4D76FF;
+  --color-accent-focus: #4D76FF;
+  --color-state-error-text: #B91C1C;
+  --color-state-disabled-text: #A1A4A7;
+}
+
+/* ===========================================
+   Base
+   =========================================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+/* ===========================================
+   Focus ring
+   =========================================== */
+:focus-visible {
+  outline: 2px solid var(--color-accent-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===========================================
+   App layout
+   =========================================== */
+.app {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: var(--spacing-8) var(--spacing-6);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.app-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: -0.01em;
+}
+
+/* Language bar */
+.lang-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.lang-bar-side {
+  flex: 1;
+}
+
+/* Panels container */
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-4);
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .panels { grid-template-columns: 1fr; }
+  .lang-bar { flex-wrap: wrap; justify-content: center; }
+  .lang-bar-side { flex: unset; width: 100%; }
+}
+
+/* ===========================================
+   TranslatorPanel
+   =========================================== */
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-stroke);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-2) var(--spacing-4);
+  min-height: 36px;
+}
+
+/* Loading skeleton */
+.panel-loading {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { background: var(--color-bg-surface); }
+  50% { background: var(--color-bg-hover); }
+}
+
+/* ===========================================
+   TextArea
+   =========================================== */
+.textarea {
+  width: 100%;
+  min-height: 200px;
+  max-height: 60vh;
+  padding: var(--spacing-4);
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  resize: none;
+  outline: none;
+  transition: opacity var(--duration-fast) var(--ease);
+}
+
+.textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.textarea-fading {
+  opacity: 0;
+}
+
+/* ===========================================
+   LanguageSelector
+   =========================================== */
+.lang-selector {
+  position: relative;
+}
+
+.lang-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: transparent;
+  border: 1px solid var(--color-border-stroke);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease);
+  white-space: nowrap;
+}
+
+.lang-trigger:hover {
+  background: var(--color-bg-hover);
+}
+
+.lang-trigger-chevron {
+  color: var(--color-icon);
+  font-size: 10px;
+  margin-left: var(--spacing-1);
+}
+
+.lang-dropdown {
+  position: absolute;
+  top: calc(100% + var(--spacing-1));
+  left: 0;
+  z-index: 50;
+  width: 240px;
+  max-height: 320px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-stroke);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay-soft);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lang-search {
+  padding: var(--spacing-2) var(--spacing-3);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border-stroke);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  outline: none;
+}
+
+.lang-search::placeholder {
+  color: var(--color-text-muted);
+}
+
+.lang-list {
+  overflow-y: auto;
+  padding: var(--spacing-1) 0;
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.lang-option:hover {
+  background: var(--color-bg-hover);
+}
+
+.lang-option-active {
+  color: var(--color-accent-500);
+}
+
+/* ===========================================
+   SwapButton
+   =========================================== */
+.swap-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--color-border-stroke);
+  border-radius: var(--radius-md);
+  color: var(--color-icon);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease),
+              transform var(--duration-medium) var(--ease);
+  flex-shrink: 0;
+}
+
+.swap-btn:hover {
+  background: var(--color-bg-hover);
+}
+
+.swap-btn:disabled {
+  color: var(--color-state-disabled-text);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.swap-btn-rotated {
+  transform: rotate(180deg);
+}
+
+/* ===========================================
+   CopyButton
+   =========================================== */
+.copy-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-icon);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.copy-btn:hover {
+  background: var(--color-bg-hover);
+}
+
+.copy-tooltip {
+  position: absolute;
+  bottom: calc(100% + var(--spacing-1));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--spacing-1) var(--spacing-2);
+  background: var(--color-bg-hover);
+  border: 1px solid var(--color-border-stroke);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-overlay-soft);
+  pointer-events: none;
+}
+
+/* ===========================================
+   CharCount
+   =========================================== */
+.char-count {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count-warning {
+  color: var(--color-state-error-text);
+}
+
+/* ===========================================
+   Clear button
+   =========================================== */
+.clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-icon);
+  cursor: pointer;
+  font-size: 16px;
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.clear-btn:hover {
+  background: var(--color-bg-hover);
+}
+
+/* ===========================================
+   Error
+   =========================================== */
+.error-text {
+  color: var(--color-state-error-text);
+  font-size: 12px;
+  padding: 0 var(--spacing-4) var(--spacing-2);
+  animation: fadeOut 5s forwards;
+}
+
+@keyframes fadeOut {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
