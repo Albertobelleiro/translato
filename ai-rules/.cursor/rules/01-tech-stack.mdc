@@ -1,0 +1,42 @@
+---
+description: Technology Stack & Core Libraries
+globs: "*.ts, *.tsx, package.json, vite.config.ts"
+alwaysApply: true
+---
+
+# Technology Stack
+
+## Rule 0: Read design-system before UI changes
+
+Before any UI change, read the relevant doc in `design-system/`:
+- `design-system/01-principles.md`: principles and objectives.
+- `design-system/02-foundations.md`: typography, color, spacing, tokens.
+- `design-system/03-layout.md`: grid, breakpoints, app shell, fixed measures, padding.
+- `design-system/04-components.md`: component rules and composition.
+- `design-system/05-patterns.md`: complex patterns (prompt to output, tables, inspector, activity log).
+- `design-system/06-governance.md`: change process, RFC, freeze, reviews.
+- `design-system/07-components.md`: component inventory and sources.
+
+This project uses a specific set of technologies. Stick to them.
+
+- **Runtime**: Bun (use `bun` for scripts, install, and test).
+- **Frontend Framework**: React 19.
+- **Language**: TypeScript (Strict mode).
+- **Build Tool**: Bun (Bun.serve / bun build).
+- **Styling**: Tailwind CSS (v3 or v4 as configured) with `index.css` defining the design system variables.
+- **UI Primitives**: Radix UI (headless accessible components).
+- **Component Library**: shadcn/ui + Kibo UI (Radix + Tailwind).
+- **Blocks**: Blocks.so, shadcnblocks, Hexta UI.
+- **AI UI**: Prompt-Kit.
+- **Icons**: Hugeicons.
+- **Data Fetching/State**: React Hooks (native) or TanStack Query (if added).
+- **Tables**: TanStack Table (React Table).
+- **Charts**: Recharts + EvilCharts.
+- **Motion**: Framer Motion.
+- **Assets**: Nucleo Glass SVG Icons + Outpace Avatars.
+
+## Key Constraints
+- **NO Class Components**: Use Functional Components with Hooks.
+- **NO JS**: Use TypeScript for everything.
+- **NO Default Exports**: Prefer named exports for components and hooks to allow easier refactoring.
+- **Bun Preference**: Use `bun install`, `bun run dev`, `bun run build`, `bun test`.

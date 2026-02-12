@@ -1,0 +1,34 @@
+---
+description: Workflow & Script Usage
+globs: "package.json, *.ts, *.js"
+alwaysApply: true
+---
+
+# Workflow
+
+## Rule 0: Read design-system before UI changes
+
+Before any UI change, read the relevant doc in `design-system/`:
+- `design-system/01-principles.md`: principles and objectives.
+- `design-system/02-foundations.md`: typography, color, spacing, tokens.
+- `design-system/03-layout.md`: grid, breakpoints, app shell, fixed measures, padding.
+- `design-system/04-components.md`: component rules and composition.
+- `design-system/05-patterns.md`: complex patterns (prompt to output, tables, inspector, activity log).
+- `design-system/06-governance.md`: change process, RFC, freeze, reviews.
+- `design-system/07-components.md`: component inventory and sources.
+
+## Package Management
+- **Installer**: `bun install`
+- **Adding Packages**: `bun add <package>` / `bun add -d <package>`
+
+## Scripts
+- **Development**: `bun run dev` (Tailwind CLI watch + `bun --hot`)
+- **Build**: `bun run build`
+  
+
+## Git
+- Commit messages should be clear and imperative ("Add feature", "Fix bug").
+
+## Verification
+- Before finishing a task, ensure `bun run dev` starts without errors if changes were made.
+- Check browser console for React warnings.

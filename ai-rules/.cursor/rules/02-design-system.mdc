@@ -1,0 +1,93 @@
+---
+description: AI Wave Design System System Implementation
+globs: "*.tsx, *.ts, *.css"
+alwaysApply: true
+---
+
+# Design System
+
+## Rule 0: Read design-system before UI changes
+
+Before any UI change, read the relevant doc in `design-system/`:
+- `design-system/01-principles.md`: principles and objectives.
+- `design-system/02-foundations.md`: typography, color, spacing, tokens.
+- `design-system/03-layout.md`: grid, breakpoints, app shell, fixed measures, padding.
+- `design-system/04-components.md`: component rules and composition.
+- `design-system/05-patterns.md`: complex patterns (prompt to output, tables, inspector, activity log).
+- `design-system/06-governance.md`: change process, RFC, freeze, reviews.
+- `design-system/07-components.md`: component inventory and sources.
+
+Implement the **AI Wave App Design System**. Adherence to visual details is critical.
+
+## Core Principles
+1.  **Compact Density**: No landing-page style spacing. Information density is high.
+2.  **Text & Data First**: Content > Decoration.
+3.  **Premium Aesthetics**: Subtle borders, refined shadows, glassmorphism where specified.
+
+## Design Tokens (Tailwind & CSS Variables)
+
+You MUST use the defined CSS variables found in `index.css`.
+
+### Colors
+- **Base (theme)**:
+    - `--base_bg`
+    - `--base_sidebar`
+    - `--base_stroke`
+    - `--base_icons`
+    - `--base_text`
+    - `--base_hover`
+- **Semantic**:
+    - `--color_bg_canvas`
+    - `--color_bg_surface`
+    - `--color_bg_panel`
+    - `--color_bg_elevated`
+    - `--color_bg_sidebar`
+    - `--color_bg_hover`
+    - `--color_bg_selected`
+    - `--color_text_primary`
+    - `--color_text_secondary`
+    - `--color_text_muted`
+    - `--color_text_inverse`
+    - `--color_border_subtle`
+    - `--color_border_strong`
+    - `--color_accent_primary`
+    - `--color_accent_focus`
+    - `--color_accent_hover`
+    - `--color_accent_pressed`
+    - `--color_accent_subtle_bg`
+
+Usage in Tailwind:
+```tsx
+// Correct
+<div className="bg-[var(--color_bg_canvas)] text-[var(--color_text_primary)] border border-[var(--color_border_subtle)]">...</div>
+```
+
+### Typography
+- **Font**: Inter.
+- **Base UI**: 14px / 20px / 500.
+- **Sidebar Header**: 16px / 20px / 600.
+
+### Shapes & Spacing
+- **Radius**:
+    - Inputs/Buttons: `rounded-[10px]`
+    - Cards/Modals: `rounded-[14px]`
+    - Tables: `rounded-none` (internal)
+- **Spacing**: Closed system `0, 2, 4, 6, 8, 12, 16, 20, 24, 32, 40, 48, 64`.
+
+### Layout Tokens
+- **Topbar height:** 56px (`--topbar-height`)
+- **View header:** 56px base + 40px secondary (`--view-header-height-base`, `--view-header-height-secondary`)
+- **Sidebar:** 348px expanded, 64px collapsed (`--sidebar-width-expanded`, `--sidebar-width-collapsed`)
+- **Inspector:** 520px default, range 480-600 (`--inspector-width`, `--inspector-width-min/max`)
+
+## Component Patterns
+
+### App Shell
+- **Sidebar**: Persist navigation.
+- **Topbar**: Context, view switcher, primary actions.
+- **Command Palette**: CMD+K global access.
+
+### Motion
+- **Fast**: 120ms (Hover)
+- **Medium**: 180ms (Drawers/Modals)
+- **Library**: `framer-motion`

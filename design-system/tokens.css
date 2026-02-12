@@ -1,0 +1,520 @@
+@import "tailwindcss";
+
+/* ============================================
+   AI Wave App Design System - Tokens
+   Version 3.0
+   ============================================ */
+
+@theme {
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, monospace;
+
+  /* Spacing Scale (closed system) */
+  --spacing-0: 0px;
+  --spacing-0_5: 2px;
+  --spacing-1: 4px;
+  --spacing-1_5: 6px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+
+  /* Radii Scale (closed system: 0, 6, 10, 14) */
+  --radius-none: 0px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Motion Durations */
+  --duration-fast: 120ms;
+  --duration-medium: 180ms;
+  --duration-slow: 240ms;
+
+  /* ============================================
+     State Colors
+     ============================================ */
+  --color-success-700: #15803D;
+
+  --color-warning-700: #B45309;
+
+  --color-error-700: #B91C1C;
+
+  --color-info-700: #0369A1;
+
+  /* ============================================
+     Layout Measurements (Fixed)
+     ============================================ */
+  --topbar-height: 56px;
+  --view-header-height-base: 56px;
+  --view-header-height-secondary: 40px;
+  --sidebar-width-expanded: 348px;
+  --sidebar-width-collapsed: 64px;
+  --sidebar-header-height: 56px;
+  --sidebar-footer-min-height: 56px;
+  --inspector-width: 520px;
+  --inspector-width-min: 480px;
+  --inspector-width-max: 600px;
+  --page-padding-desktop: 24px;
+  --page-padding-tablet: 16px;
+  --page-padding-mobile: 12px;
+
+  /* ============================================
+     Shadows (Elevation: prefer border to shadow)
+     ============================================ */
+  --shadow-none: none;
+  --shadow-overlay-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-overlay-strong: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   Dark Theme (Default)
+   ============================================ */
+:root {
+  /* Semantic Tokens - Dark Theme */
+  --color-bg-canvas: #1A1D21;
+  --color-bg-sidebar: #15181C;
+  --color-bg-surface: #1A1D21;
+  --color-bg-elevated: #1A1D21;
+  --color-bg-hover: #242529;
+  --color-bg-selected: #242529;
+
+  --color-text-primary: #EEEFF1;
+  --color-text-secondary: #A1A4A7;
+  --color-text-muted: #A1A4A7;
+  --color-text-inverse: #1A1D21;
+
+  --color-border-stroke: #2F3033;
+  --color-border-strong: #2F3033;
+  --color-icon: #A1A4A7;
+
+  /* Accent Scale - Dark */
+  --color-accent-50: #ECF2FF;
+  --color-accent-100: #BDD2FF;
+  --color-accent-200: #99B7FF;
+  --color-accent-300: #769BFF;
+  --color-accent-400: #4D76FF;
+  --color-accent-500: #4D76FF;
+  --color-accent-600: #3756BE;
+  --color-accent-700: #253B87;
+  --color-accent-800: #142355;
+  --color-accent-900: #070F2E;
+  --color-accent-950: #010412;
+
+  --color-accent: var(--color-accent-500);
+  --color-accent-hover: var(--color-accent-400);
+  --color-accent-pressed: var(--color-accent-600);
+  --color-accent-focus: var(--color-accent-500);
+  --color-accent-subtle-bg: var(--color-accent-900);
+
+  /* State tokens - Dark */
+  --color-state-default: var(--color-bg-canvas);
+  --color-state-hover: var(--color-bg-hover);
+  --color-state-pressed: var(--color-bg-hover);
+  --color-state-selected: var(--color-bg-hover);
+  --color-state-disabled-bg: var(--color-bg-canvas);
+  --color-state-disabled-text: var(--color-icon);
+  --color-state-focus: var(--color-accent-500);
+
+  --color-state-success: var(--color-success-700);
+  --color-state-success-bg: rgba(21, 128, 61, 0.16);
+  --color-state-success-border: rgba(21, 128, 61, 0.22);
+  --color-state-success-text: var(--color-success-700);
+
+  --color-state-warning: var(--color-warning-700);
+  --color-state-warning-bg: rgba(180, 83, 9, 0.16);
+  --color-state-warning-border: rgba(180, 83, 9, 0.22);
+  --color-state-warning-text: var(--color-warning-700);
+
+  --color-state-error: var(--color-error-700);
+  --color-state-error-bg: rgba(185, 28, 28, 0.16);
+  --color-state-error-border: rgba(185, 28, 28, 0.22);
+  --color-state-error-text: var(--color-error-700);
+
+  --color-state-info: var(--color-info-700);
+  --color-state-info-bg: rgba(3, 105, 161, 0.16);
+  --color-state-info-border: rgba(3, 105, 161, 0.22);
+  --color-state-info-text: var(--color-info-700);
+
+  /* Token aliases (design-system naming) */
+  --base_bg: var(--color-bg-canvas);
+  --base_sidebar: var(--color-bg-sidebar);
+  --base_stroke: var(--color-border-stroke);
+  --base_icons: var(--color-icon);
+  --base_text: var(--color-text-primary);
+  --base_hover: var(--color-bg-hover);
+
+  --accent_50: var(--color-accent-50);
+  --accent_100: var(--color-accent-100);
+  --accent_200: var(--color-accent-200);
+  --accent_300: var(--color-accent-300);
+  --accent_400: var(--color-accent-400);
+  --accent_500: var(--color-accent-500);
+  --accent_600: var(--color-accent-600);
+  --accent_700: var(--color-accent-700);
+  --accent_800: var(--color-accent-800);
+  --accent_900: var(--color-accent-900);
+  --accent_950: var(--color-accent-950);
+
+  --color_bg_canvas: var(--color-bg-canvas);
+  --color_bg_surface: var(--color-bg-surface);
+  --color_bg_panel: var(--color-bg-canvas);
+  --color_bg_elevated: var(--color-bg-elevated);
+  --color_bg_sidebar: var(--color-bg-sidebar);
+  --color_bg_hover: var(--color-bg-hover);
+  --color_bg_selected: var(--color-bg-selected);
+
+  --color_text_primary: var(--color-text-primary);
+  --color_text_secondary: var(--color-text-secondary);
+  --color_text_muted: var(--color-text-muted);
+  --color_text_inverse: var(--color-text-inverse);
+
+  --color_border_subtle: var(--color-border-stroke);
+  --color_border_strong: var(--color-border-strong);
+
+  --color_accent_primary: var(--color-accent-500);
+  --color_accent_focus: var(--color-accent-focus);
+  --color_accent_hover: var(--color-accent-hover);
+  --color_accent_pressed: var(--color-accent-pressed);
+  --color_accent_subtle_bg: var(--color-accent-subtle-bg);
+
+  --color_state_default: var(--color-state-default);
+  --color_state_hover: var(--color-state-hover);
+  --color_state_pressed: var(--color-state-pressed);
+  --color_state_selected: var(--color-state-selected);
+  --color_state_disabled_bg: var(--color-state-disabled-bg);
+  --color_state_disabled_text: var(--color-state-disabled-text);
+  --color_state_focus: var(--color-state-focus);
+
+  --color_state_success: var(--color-state-success);
+  --color_state_success_bg: var(--color-state-success-bg);
+  --color_state_success_border: var(--color-state-success-border);
+  --color_state_success_text: var(--color-state-success-text);
+
+  --color_state_warning: var(--color-state-warning);
+  --color_state_warning_bg: var(--color-state-warning-bg);
+  --color_state_warning_border: var(--color-state-warning-border);
+  --color_state_warning_text: var(--color-state-warning-text);
+
+  --color_state_error: var(--color-state-error);
+  --color_state_error_bg: var(--color-state-error-bg);
+  --color_state_error_border: var(--color-state-error-border);
+  --color_state_error_text: var(--color-state-error-text);
+
+  --color_state_info: var(--color-state-info);
+  --color_state_info_bg: var(--color-state-info-bg);
+  --color_state_info_border: var(--color-state-info-border);
+  --color_state_info_text: var(--color-state-info-text);
+}
+
+/* ============================================
+   Light Theme
+   ============================================ */
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Semantic Tokens - Light Theme */
+    --color-bg-canvas: #FFFFFF;
+    --color-bg-sidebar: #FBFBFB;
+    --color-bg-surface: #FFFFFF;
+    --color-bg-elevated: #FFFFFF;
+    --color-bg-hover: #EEEFF1;
+    --color-bg-selected: #EEEFF1;
+
+    --color-text-primary: #242529;
+    --color-text-secondary: #505154;
+    --color-text-muted: #505154;
+    --color-text-inverse: #FFFFFF;
+
+    --color-border-stroke: #FBFBFB;
+    --color-border-strong: #FBFBFB;
+
+    --color-icon: #505154;
+
+    /* Accent Scale - Light */
+    --color-accent-50: #E4EDFF;
+    --color-accent-100: #A3C1FD;
+    --color-accent-200: #719CF9;
+    --color-accent-300: #3F75F2;
+    --color-accent-400: #0036E6;
+    --color-accent-500: #0036E6;
+    --color-accent-600: #0025AB;
+    --color-accent-700: #00187A;
+    --color-accent-800: #000B4C;
+    --color-accent-900: #000328;
+    --color-accent-950: #00010F;
+
+    --color-accent: var(--color-accent-500);
+    --color-accent-hover: var(--color-accent-400);
+    --color-accent-pressed: var(--color-accent-600);
+    --color-accent-focus: var(--color-accent-500);
+    --color-accent-subtle-bg: var(--color-accent-50);
+
+    /* State tokens - Light */
+    --color-state-default: var(--color-bg-canvas);
+    --color-state-hover: var(--color-bg-hover);
+    --color-state-pressed: var(--color-bg-hover);
+    --color-state-selected: var(--color-bg-hover);
+    --color-state-disabled-bg: var(--color-bg-canvas);
+    --color-state-disabled-text: var(--color-icon);
+    --color-state-focus: var(--color-accent-500);
+
+    --color-state-success: var(--color-success-700);
+    --color-state-success-bg: rgba(21, 128, 61, 0.12);
+    --color-state-success-border: rgba(21, 128, 61, 0.18);
+    --color-state-success-text: var(--color-success-700);
+
+    --color-state-warning: var(--color-warning-700);
+    --color-state-warning-bg: rgba(180, 83, 9, 0.12);
+    --color-state-warning-border: rgba(180, 83, 9, 0.18);
+    --color-state-warning-text: var(--color-warning-700);
+
+    --color-state-error: var(--color-error-700);
+    --color-state-error-bg: rgba(185, 28, 28, 0.12);
+    --color-state-error-border: rgba(185, 28, 28, 0.18);
+    --color-state-error-text: var(--color-error-700);
+
+    --color-state-info: var(--color-info-700);
+    --color-state-info-bg: rgba(3, 105, 161, 0.12);
+    --color-state-info-border: rgba(3, 105, 161, 0.18);
+    --color-state-info-text: var(--color-info-700);
+  }
+}
+
+/* Manual theme class overrides */
+.dark {
+  --color-bg-canvas: #1A1D21;
+  --color-bg-sidebar: #15181C;
+  --color-bg-surface: #1A1D21;
+  --color-bg-elevated: #1A1D21;
+  --color-bg-hover: #242529;
+  --color-bg-selected: #242529;
+  --color-text-primary: #EEEFF1;
+  --color-text-secondary: #A1A4A7;
+  --color-text-muted: #A1A4A7;
+  --color-text-inverse: #1A1D21;
+  --color-border-stroke: #2F3033;
+  --color-border-strong: #2F3033;
+  --color-icon: #A1A4A7;
+  --color-accent-50: #ECF2FF;
+  --color-accent-100: #BDD2FF;
+  --color-accent-200: #99B7FF;
+  --color-accent-300: #769BFF;
+  --color-accent-400: #4D76FF;
+  --color-accent-500: #4D76FF;
+  --color-accent-600: #3756BE;
+  --color-accent-700: #253B87;
+  --color-accent-800: #142355;
+  --color-accent-900: #070F2E;
+  --color-accent-950: #010412;
+  --color-accent: var(--color-accent-500);
+  --color-accent-hover: var(--color-accent-400);
+  --color-accent-pressed: var(--color-accent-600);
+  --color-accent-focus: var(--color-accent-500);
+  --color-accent-subtle-bg: var(--color-accent-900);
+
+  --color-state-default: var(--color-bg-canvas);
+  --color-state-hover: var(--color-bg-hover);
+  --color-state-pressed: var(--color-bg-hover);
+  --color-state-selected: var(--color-bg-hover);
+  --color-state-disabled-bg: var(--color-bg-canvas);
+  --color-state-disabled-text: var(--color-icon);
+  --color-state-focus: var(--color-accent-500);
+
+  --color-state-success: var(--color-success-700);
+  --color-state-success-bg: rgba(21, 128, 61, 0.16);
+  --color-state-success-border: rgba(21, 128, 61, 0.22);
+  --color-state-success-text: var(--color-success-700);
+
+  --color-state-warning: var(--color-warning-700);
+  --color-state-warning-bg: rgba(180, 83, 9, 0.16);
+  --color-state-warning-border: rgba(180, 83, 9, 0.22);
+  --color-state-warning-text: var(--color-warning-700);
+
+  --color-state-error: var(--color-error-700);
+  --color-state-error-bg: rgba(185, 28, 28, 0.16);
+  --color-state-error-border: rgba(185, 28, 28, 0.22);
+  --color-state-error-text: var(--color-error-700);
+
+  --color-state-info: var(--color-info-700);
+  --color-state-info-bg: rgba(3, 105, 161, 0.16);
+  --color-state-info-border: rgba(3, 105, 161, 0.22);
+  --color-state-info-text: var(--color-info-700);
+}
+
+.light {
+  --color-bg-canvas: #FFFFFF;
+  --color-bg-sidebar: #FBFBFB;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-hover: #EEEFF1;
+  --color-bg-selected: #EEEFF1;
+  --color-text-primary: #242529;
+  --color-text-secondary: #505154;
+  --color-text-muted: #505154;
+  --color-text-inverse: #FFFFFF;
+  --color-border-stroke: #FBFBFB;
+  --color-border-strong: #FBFBFB;
+  --color-icon: #505154;
+  --color-accent-50: #E4EDFF;
+  --color-accent-100: #A3C1FD;
+  --color-accent-200: #719CF9;
+  --color-accent-300: #3F75F2;
+  --color-accent-400: #0036E6;
+  --color-accent-500: #0036E6;
+  --color-accent-600: #0025AB;
+  --color-accent-700: #00187A;
+  --color-accent-800: #000B4C;
+  --color-accent-900: #000328;
+  --color-accent-950: #00010F;
+  --color-accent: var(--color-accent-500);
+  --color-accent-hover: var(--color-accent-400);
+  --color-accent-pressed: var(--color-accent-600);
+  --color-accent-focus: var(--color-accent-500);
+  --color-accent-subtle-bg: var(--color-accent-50);
+
+  --color-state-default: var(--color-bg-canvas);
+  --color-state-hover: var(--color-bg-hover);
+  --color-state-pressed: var(--color-bg-hover);
+  --color-state-selected: var(--color-bg-hover);
+  --color-state-disabled-bg: var(--color-bg-canvas);
+  --color-state-disabled-text: var(--color-icon);
+  --color-state-focus: var(--color-accent-500);
+
+  --color-state-success: var(--color-success-700);
+  --color-state-success-bg: rgba(21, 128, 61, 0.12);
+  --color-state-success-border: rgba(21, 128, 61, 0.18);
+  --color-state-success-text: var(--color-success-700);
+
+  --color-state-warning: var(--color-warning-700);
+  --color-state-warning-bg: rgba(180, 83, 9, 0.12);
+  --color-state-warning-border: rgba(180, 83, 9, 0.18);
+  --color-state-warning-text: var(--color-warning-700);
+
+  --color-state-error: var(--color-error-700);
+  --color-state-error-bg: rgba(185, 28, 28, 0.12);
+  --color-state-error-border: rgba(185, 28, 28, 0.18);
+  --color-state-error-text: var(--color-error-700);
+
+  --color-state-info: var(--color-info-700);
+  --color-state-info-bg: rgba(3, 105, 161, 0.12);
+  --color-state-info-border: rgba(3, 105, 161, 0.18);
+  --color-state-info-text: var(--color-info-700);
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color_bg_canvas);
+  color: var(--color_text_primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/* ============================================
+   Typography Base
+   ============================================ */
+.text-display {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.text-h1 {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.text-h2 {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.text-h3 {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.text-body {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.text-body-strong {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.text-caption {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.text-sidebar-header {
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Tabular numbers for metrics/tables */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Focus Ring (Always visible)
+   ============================================ */
+:focus-visible {
+  outline: 2px solid var(--color_accent_focus);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   Reduced Motion Support
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

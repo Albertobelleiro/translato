@@ -1,0 +1,44 @@
+---
+description: Coding Standards & File Structure
+globs: "*.ts, *.tsx"
+alwaysApply: true
+---
+
+# Coding Standards
+
+## Rule 0: Read design-system before UI changes
+
+Before any UI change, read the relevant doc in `design-system/`:
+- `design-system/01-principles.md`: principles and objectives.
+- `design-system/02-foundations.md`: typography, color, spacing, tokens.
+- `design-system/03-layout.md`: grid, breakpoints, app shell, fixed measures, padding.
+- `design-system/04-components.md`: component rules and composition.
+- `design-system/05-patterns.md`: complex patterns (prompt to output, tables, inspector, activity log).
+- `design-system/06-governance.md`: change process, RFC, freeze, reviews.
+- `design-system/07-components.md`: component inventory and sources.
+
+## File Structure
+- `src/components/ui`: Generic, reusable UI components (shadcn-like).
+- `src/components/layout`: Layout specific components (Sidebar, Shell).
+- `src/pages`: Page-level components.
+- `src/lib`: Utilities and helpers.
+- `src/hooks`: Custom React hooks.
+
+## Naming Conventions
+- **Files**: PascalCase for components (`MyComponent.tsx`), camelCase for helpers/hooks (`useHook.ts`, `utils.ts`).
+- **Components**: PascalCase.
+- **Functions/Variables**: camelCase.
+- **Types/Interfaces**: PascalCase, generally without `I` prefix.
+
+## TypeScript Rules
+- **Strict Mode**: No `any`. Define interfaces for props.
+- **Props**: Use `interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {}`.
+
+## Styles
+- **Tailwind Merge**: Use `cn()` utility (clsx + tailwind-merge) for reusable components to allow class overriding.
+- **Mobile First**: Write mobile styles first, then `md:`, `lg:` etc. (Though this is a desktop-first dashboard, keep breakpoints in mind).
+
+## Best Practices
+- **Early Returns**: Reduce nesting.
+- **Composability**: Break down large components.
+- **Accessibility**: Use semantics (`<button>`, `nav`, `main`) and ARIA attributes where needed (Radix handles most).
