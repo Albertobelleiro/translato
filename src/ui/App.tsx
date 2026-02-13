@@ -26,6 +26,27 @@ type Action =
   | { type: "SWAP_LANGS" }
   | { type: "CLEAR" };
 
+const sourceLangCodes = new Set(sourceLangs.map((lang) => lang.code));
+const targetLangCodes = new Set(languages.map((lang) => lang.code));
+const preferredTargetBySource: Record<string, string> = {
+  EN: "EN-US",
+  PT: "PT-BR",
+  ZH: "ZH-HANS",
+};
+
+function toSourceLang(code: string): string {
+  if (sourceLangCodes.has(code)) return code;
+  const base = code.split("-")[0] ?? "";
+  return base && sourceLangCodes.has(base) ? base : "";
+}
+
+function toTargetLang(code: string): string {
+  if (targetLangCodes.has(code)) return code;
+  const preferred = preferredTargetBySource[code];
+  if (preferred && targetLangCodes.has(preferred)) return preferred;
+  return languages[0]?.code ?? "ES";
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "SET_SOURCE_TEXT": return { ...state, sourceText: action.payload };
@@ -36,8 +57,8 @@ function reducer(state: State, action: Action): State {
     case "SET_ERROR": return { ...state, error: action.payload };
     case "SWAP_LANGS": return {
       ...state,
-      sourceLang: state.targetLang,
-      targetLang: state.sourceLang || state.targetLang,
+      sourceLang: toSourceLang(state.targetLang),
+      targetLang: toTargetLang(state.sourceLang || state.targetLang),
       sourceText: state.targetText,
       targetText: state.sourceText,
     };

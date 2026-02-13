@@ -15,6 +15,13 @@ function json(data: unknown, status = 200) {
   });
 }
 
+function mapDeepLStatus(status: number): { error: string; status: number } {
+  if (status === 403) return { error: "Invalid API key", status: 401 };
+  if (status === 429) return { error: "Rate limit exceeded", status: 429 };
+  if (status === 456) return { error: "Quota exceeded", status: 429 };
+  return { error: "Translation service unavailable", status: 502 };
+}
+
 Bun.serve({
   routes: {
     "/": index,
@@ -50,11 +57,8 @@ Bun.serve({
         });
 
         if (!res.ok) {
-          const status = res.status;
-          if (status === 403) return json({ error: "Invalid API key" }, 401);
-          if (status === 429) return json({ error: "Rate limit exceeded" }, 429);
-          if (status === 456) return json({ error: "Quota exceeded" }, 429);
-          return json({ error: "Translation service unavailable" }, 502);
+          const deepLStatus = mapDeepLStatus(res.status);
+          return json({ error: deepLStatus.error }, deepLStatus.status);
         }
 
         const data = await res.json() as { translations: Array<{ detected_source_language: string; text: string }> };
@@ -83,10 +87,19 @@ Bun.serve({
             signal: AbortSignal.timeout(5000),
           }),
         ]);
+
+        if (!sourceRes.ok || !targetRes.ok) {
+          const deepLStatus = mapDeepLStatus(sourceRes.ok ? targetRes.status : sourceRes.status);
+          return json({ error: deepLStatus.error }, deepLStatus.status);
+        }
+
         const source = await sourceRes.json();
         const target = await targetRes.json();
         return json({ source, target });
-      } catch {
+      } catch (e) {
+        if (e instanceof Error && e.name === "TimeoutError") {
+          return json({ error: "Language request timed out" }, 504);
+        }
         return json({ error: "Could not fetch languages" }, 502);
       }
     }
