@@ -128,6 +128,13 @@ export function App() {
   useEffect(() => { dispatch({ type: "SET_LOADING", payload: isLoading }); }, [isLoading]);
   useEffect(() => { dispatch({ type: "SET_ERROR", payload: error }); }, [error]);
 
+  // Auto-dismiss error after 5s
+  useEffect(() => {
+    if (!state.error) return;
+    const timer = setTimeout(() => dispatch({ type: "SET_ERROR", payload: null }), 5000);
+    return () => clearTimeout(timer);
+  }, [state.error]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       didHydratePreferences.current = false;

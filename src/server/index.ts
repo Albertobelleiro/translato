@@ -1,6 +1,12 @@
 import index from "../ui/index.html";
 
-import { handleConfig, handleLanguages, handleUsage } from "./routes.ts";
+import {
+  handleConfig,
+  handleLanguages,
+  handleOptions,
+  handleTranslate,
+  handleUsage,
+} from "./routes.ts";
 
 if (!process.env.DEEPL_API_KEY) {
   console.error("Missing DEEPL_API_KEY in .env");
@@ -18,14 +24,21 @@ try {
     port,
     routes: {
       "/": index,
+      "/api/translate": {
+        POST: handleTranslate,
+        OPTIONS: handleOptions,
+      },
       "/api/languages": {
         GET: handleLanguages,
+        OPTIONS: handleOptions,
       },
       "/api/usage": {
         GET: handleUsage,
+        OPTIONS: handleOptions,
       },
       "/api/config": {
         GET: handleConfig,
+        OPTIONS: handleOptions,
       },
       "/favicon.ico": {
         GET: () => new Response(null, { status: 204 }),
