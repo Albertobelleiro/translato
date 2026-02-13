@@ -27,6 +27,9 @@ try {
       "/api/config": {
         GET: handleConfig,
       },
+      "/favicon.ico": {
+        GET: () => new Response(null, { status: 204 }),
+      },
     },
     development: { hmr: true, console: true },
   });

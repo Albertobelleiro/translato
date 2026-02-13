@@ -33,6 +33,28 @@ type ConvexRuntimeBoundaryState = {
 
 const clientEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchRuntimeConfig(): Promise<RuntimeConfig> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch("/api/config", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load runtime config from /api/config (${response.status})`);
+      return await response.json() as RuntimeConfig;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) await sleep(250);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? new Error(`Unable to load runtime config: ${lastError.message}`)
+    : new Error("Unable to load runtime config");
+}
+
 class ConvexRuntimeBoundary extends Component<ConvexRuntimeBoundaryProps, ConvexRuntimeBoundaryState> {
   override state: ConvexRuntimeBoundaryState = { message: null };
 
@@ -64,9 +86,7 @@ async function loadRuntimeConfig(): Promise<LoadedRuntimeConfig> {
   let clerkPublishableKey = clientEnv?.CLERK_PUBLISHABLE_KEY ?? clientEnv?.VITE_CLERK_PUBLISHABLE_KEY;
 
   if (!convexUrl || !clerkPublishableKey) {
-    const response = await fetch("/api/config");
-    if (!response.ok) throw new Error("Unable to load runtime config from /api/config");
-    const config = await response.json() as RuntimeConfig;
+    const config = await fetchRuntimeConfig();
     convexUrl ??= config.convexUrl;
     clerkPublishableKey ??= config.clerkPublishableKey;
   }

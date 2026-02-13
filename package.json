@@ -11,9 +11,9 @@
   "scripts": {
     "dev": "bun --hot src/server/index.ts",
     "typecheck": "bun run tsc --noEmit",
-    "test": "bun test",
-    "test:coverage": "bun test --coverage",
-    "ci": "bun run typecheck && bun test"
+    "test": "bun test tests/convex/*.test.ts tests/server/*.test.ts tests/translator/*.test.ts",
+    "test:coverage": "bun test --coverage tests/convex/*.test.ts tests/server/*.test.ts tests/translator/*.test.ts",
+    "ci": "bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "typescript": "^5"

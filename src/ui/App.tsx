@@ -1,4 +1,4 @@
-import { Globe02Icon, LanguageSquareIcon } from "@hugeicons/core-free-icons";
+import * as hugeicons from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
@@ -41,6 +41,8 @@ type Action =
 
 const DEFAULT_TARGET_LANG = "EN-US";
 const bilateralTargetLanguages = languages.filter((lang) => lang.code === "EN-US" || lang.code === "ES");
+const brandIcon = hugeicons.LanguageSquareIcon ?? hugeicons.Globe02Icon;
+const detectedIcon = hugeicons.Globe02Icon;
 
 function toBilateralTarget(code: string): string {
   return code === "ES" ? "ES" : DEFAULT_TARGET_LANG;
@@ -230,7 +232,7 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-brand">
-          <HugeiconsIcon icon={LanguageSquareIcon} size={22} color="var(--color-accent-500)" />
+          <HugeiconsIcon icon={brandIcon} size={22} color="var(--color-accent-500)" />
           <span className="app-title">Translato</span>
         </div>
         <div className="app-header-actions">
@@ -244,7 +246,7 @@ export function App() {
         <div className="lang-bar">
           <div className="lang-bar-side">
             <button className="lang-trigger" type="button" disabled>
-              {DetectedFlag ? <DetectedFlag size={20} aria-hidden /> : <HugeiconsIcon icon={Globe02Icon} size={18} />}
+              {DetectedFlag ? <DetectedFlag size={20} aria-hidden /> : <HugeiconsIcon icon={detectedIcon} size={18} />}
               <span className="lang-trigger-label">
                 {detectedSourceLanguage
                   ? `${detectedSourceLanguage.name} (detected)`
