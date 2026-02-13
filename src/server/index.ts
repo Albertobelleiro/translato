@@ -1,7 +1,15 @@
 import index from "../ui/index.html";
 
-import { handleConfig, handleLanguages, handleUsage } from "./routes.ts";
+import {
+  handleConfig,
+  handleLanguages,
+  handleOptions,
+  handleTranslate,
+  handleUsage,
+} from "./routes.ts";
 
+// Local Bun server entrypoint kept for development workflows.
+// Production on Vercel serves the Vite `dist/` output and does not run this file.
 if (!process.env.DEEPL_API_KEY) {
   console.error("Missing DEEPL_API_KEY in .env");
   process.exit(1);
@@ -18,14 +26,21 @@ try {
     port,
     routes: {
       "/": index,
+      "/api/translate": {
+        POST: handleTranslate,
+        OPTIONS: handleOptions,
+      },
       "/api/languages": {
         GET: handleLanguages,
+        OPTIONS: handleOptions,
       },
       "/api/usage": {
         GET: handleUsage,
+        OPTIONS: handleOptions,
       },
       "/api/config": {
         GET: handleConfig,
+        OPTIONS: handleOptions,
       },
       "/favicon.ico": {
         GET: () => new Response(null, { status: 204 }),

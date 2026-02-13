@@ -58,7 +58,7 @@ describe("translate action auth enforcement", () => {
 
     const runMutation = mock(async () => null);
     const ctx = {
-      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|1", email: "me@example.com" }) },
+      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|throttle", email: "me@example.com" }) },
       runMutation,
     } as never;
 
@@ -68,5 +68,29 @@ describe("translate action auth enforcement", () => {
     })).resolves.toEqual({ translatedText: "Hola", detectedSourceLang: "EN" });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(runMutation).toHaveBeenCalledTimes(1);
+  });
+
+  test("throttles burst requests per user", async () => {
+    const { translate } = await loadTranslatorModule();
+    const fetchSpy = spyOn(globalThis, "fetch");
+    fetchSpy.mockImplementation((async () => new Response(JSON.stringify({
+      translations: [{ text: "Hola", detected_source_language: "EN" }],
+    }), { status: 200 })) as never);
+
+    const runMutation = mock(async () => null);
+    const ctx = {
+      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|1", email: "me@example.com" }) },
+      runMutation,
+    } as never;
+
+    const handler = (translate as { _handler: (ctx: unknown, args: unknown) => Promise<unknown> })._handler;
+    for (let i = 0; i < 20; i += 1) {
+      await expect(handler(ctx, { text: `Hello ${i}`, targetLang: "ES" })).resolves.toEqual({
+        translatedText: "Hola",
+        detectedSourceLang: "EN",
+      });
+    }
+
+    await expect(handler(ctx, { text: "Hello 21", targetLang: "ES" })).rejects.toThrow("Rate limit exceeded");
   });
 });
