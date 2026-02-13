@@ -1,0 +1,115 @@
+:root {
+  --bg: #0A0A0B;
+  --surface: #1A1A1E;
+  --border: rgba(255, 255, 255, 0.06);
+  --text-primary: #EDEDEF;
+  --text-secondary: #8E8E93;
+  --accent: #7C5CFC;
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.app-container {
+  min-height: 100vh;
+  padding: var(--space-3);
+}
+
+.translator-layout {
+  display: flex;
+  gap: var(--space-3);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.translator-panel {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.language-selector {
+  background: var(--bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: var(--space-1) var(--space-2);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.language-selector:hover {
+  border-color: var(--accent);
+}
+
+.panel-content {
+  flex: 1;
+  position: relative;
+}
+
+.translator-textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  background: transparent;
+  color: var(--text-primary);
+  border: none;
+  padding: var(--space-3);
+  font-size: 16px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.translator-textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+.loading-indicator {
+  position: absolute;
+  bottom: var(--space-2);
+  right: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.error-message {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  background: rgba(255, 59, 48, 0.1);
+  color: #FF3B30;
+  border-radius: 6px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .translator-layout {
+    flex-direction: column;
+  }
+}
