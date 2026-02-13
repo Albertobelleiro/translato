@@ -3,7 +3,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { ConvexReactClient, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { api } from "../../convex/_generated/api";
 
 import { App } from "./App.tsx";
@@ -30,6 +30,13 @@ type ConvexRuntimeBoundaryProps = {
 
 type ConvexRuntimeBoundaryState = {
   message: string | null;
+};
+
+type HmrGlobals = {
+  __TRANSLATO_REACT_ROOT__?: Root;
+  __TRANSLATO_REACT_CONTAINER__?: HTMLElement;
+  __TRANSLATO_CONVEX_CLIENT__?: ConvexReactClient;
+  __TRANSLATO_CONVEX_URL__?: string;
 };
 
 const clientEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
@@ -127,8 +134,36 @@ function InternalAccessGate() {
   return <App />;
 }
 
-let reactRoot: ReturnType<typeof createRoot> | null = null;
-let convexClient: ConvexReactClient | null = null;
+function getHmrGlobals(): typeof globalThis & HmrGlobals {
+  return globalThis as typeof globalThis & HmrGlobals;
+}
+
+function getOrCreateReactRoot(container: HTMLElement): Root {
+  const hmrGlobals = getHmrGlobals();
+  if (!hmrGlobals.__TRANSLATO_REACT_ROOT__) {
+    hmrGlobals.__TRANSLATO_REACT_ROOT__ = createRoot(container);
+    hmrGlobals.__TRANSLATO_REACT_CONTAINER__ = container;
+    return hmrGlobals.__TRANSLATO_REACT_ROOT__;
+  }
+
+  if (hmrGlobals.__TRANSLATO_REACT_CONTAINER__ !== container) {
+    hmrGlobals.__TRANSLATO_REACT_ROOT__.unmount();
+    hmrGlobals.__TRANSLATO_REACT_ROOT__ = createRoot(container);
+    hmrGlobals.__TRANSLATO_REACT_CONTAINER__ = container;
+  }
+
+  return hmrGlobals.__TRANSLATO_REACT_ROOT__;
+}
+
+function getOrCreateConvexClient(convexUrl: string): ConvexReactClient {
+  const hmrGlobals = getHmrGlobals();
+  if (!hmrGlobals.__TRANSLATO_CONVEX_CLIENT__ || hmrGlobals.__TRANSLATO_CONVEX_URL__ !== convexUrl) {
+    hmrGlobals.__TRANSLATO_CONVEX_CLIENT__ = new ConvexReactClient(convexUrl);
+    hmrGlobals.__TRANSLATO_CONVEX_URL__ = convexUrl;
+  }
+
+  return hmrGlobals.__TRANSLATO_CONVEX_CLIENT__;
+}
 
 async function boot(): Promise<void> {
   const container = document.getElementById("root");
@@ -138,13 +173,8 @@ async function boot(): Promise<void> {
   initTheme();
 
   const { convexUrl, clerkPublishableKey } = await loadRuntimeConfig();
-  if (!convexClient) {
-    convexClient = new ConvexReactClient(convexUrl);
-  }
-
-  if (!reactRoot) {
-    reactRoot = createRoot(container);
-  }
+  const convexClient = getOrCreateConvexClient(convexUrl);
+  const reactRoot = getOrCreateReactRoot(container);
 
   reactRoot.render(
     <>
