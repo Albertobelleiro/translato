@@ -1,7 +1,8 @@
 import { useEffect, useReducer, useRef } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { LanguageSquareIcon } from "@hugeicons/core-free-icons";
-import { useMutation, useQuery } from "convex/react";
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { LanguageSelector } from "./components/LanguageSelector.tsx";
 import { SwapButton } from "./components/SwapButton.tsx";
@@ -81,7 +82,8 @@ const initialState: State = {
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const didHydratePreferences = useRef(false);
-  const preferences = useQuery(api.preferences.get);
+  const { isAuthenticated } = useConvexAuth();
+  const preferences = useQuery(api.preferences.get, isAuthenticated ? {} : "skip");
   const savePreferences = useMutation(api.preferences.save);
   const { translatedText, isLoading, error, forceTranslate } = useTranslate(
     state.sourceText,
@@ -94,6 +96,10 @@ export function App() {
   useEffect(() => { dispatch({ type: "SET_ERROR", payload: error }); }, [error]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      didHydratePreferences.current = false;
+      return;
+    }
     if (preferences === undefined || didHydratePreferences.current) return;
     if (preferences) {
       const sourceLang = preferences.sourceLang === "auto" ? "" : toSourceLang(preferences.sourceLang);
@@ -101,15 +107,15 @@ export function App() {
       dispatch({ type: "SET_TARGET_LANG", payload: toTargetLang(preferences.targetLang) });
     }
     didHydratePreferences.current = true;
-  }, [preferences]);
+  }, [preferences, isAuthenticated]);
 
   useEffect(() => {
-    if (!didHydratePreferences.current) return;
+    if (!isAuthenticated || !didHydratePreferences.current) return;
     void savePreferences({
       sourceLang: state.sourceLang || "auto",
       targetLang: state.targetLang,
     });
-  }, [state.sourceLang, state.targetLang, savePreferences]);
+  }, [state.sourceLang, state.targetLang, savePreferences, isAuthenticated]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -131,7 +137,31 @@ export function App() {
           <HugeiconsIcon icon={LanguageSquareIcon} size={22} color="var(--color-accent-500)" />
           <span className="app-title">Translato</span>
         </div>
-        <span className="app-subtitle">Powered by DeepL</span>
+        <div className="app-header-actions">
+          <span className="app-subtitle">Powered by DeepL</span>
+          <SignedOut>
+            <>
+              <SignInButton mode="modal">
+                <button type="button" className="auth-btn">Sign in</button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button type="button" className="auth-btn auth-btn-secondary">Sign up</button>
+              </SignUpButton>
+            </>
+          </SignedOut>
+          <SignedIn>
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: {
+                    width: 28,
+                    height: 28,
+                  },
+                },
+              }}
+            />
+          </SignedIn>
+        </div>
       </header>
 
       <main className="translator">
@@ -169,14 +199,16 @@ export function App() {
           />
         </div>
 
-        <History
-          onSelect={(item) => {
-            dispatch({ type: "SET_SOURCE_TEXT", payload: item.sourceText });
-            dispatch({ type: "SET_TARGET_TEXT", payload: item.targetText });
-            dispatch({ type: "SET_SOURCE_LANG", payload: item.sourceLang === "auto" ? "" : toSourceLang(item.sourceLang) });
-            dispatch({ type: "SET_TARGET_LANG", payload: toTargetLang(item.targetLang) });
-          }}
-        />
+        {isAuthenticated && (
+          <History
+            onSelect={(item) => {
+              dispatch({ type: "SET_SOURCE_TEXT", payload: item.sourceText });
+              dispatch({ type: "SET_TARGET_TEXT", payload: item.targetText });
+              dispatch({ type: "SET_SOURCE_LANG", payload: item.sourceLang === "auto" ? "" : toSourceLang(item.sourceLang) });
+              dispatch({ type: "SET_TARGET_LANG", payload: toTargetLang(item.targetLang) });
+            }}
+          />
+        )}
       </main>
 
       <footer className="app-footer">

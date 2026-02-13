@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as helpers from "../helpers.js";
 import type * as preferences from "../preferences.js";
 import type * as stats from "../stats.js";
 import type * as translations from "../translations.js";
@@ -20,6 +21,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  helpers: typeof helpers;
   preferences: typeof preferences;
   stats: typeof stats;
   translations: typeof translations;

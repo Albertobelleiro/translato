@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getUser, requireUser } from "./helpers";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -8,13 +9,15 @@ function todayIso() {
 export const record = mutation({
   args: {
     characterCount: v.number(),
-    userId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getUser(ctx);
+    if (!user) return null;
+
     const date = todayIso();
     const existing = await ctx.db
       .query("usageStats")
-      .withIndex("by_userId_date", (q) => q.eq("userId", args.userId).eq("date", date))
+      .withIndex("by_userId_date", (q) => q.eq("userId", user.id).eq("date", date))
       .unique();
 
     if (existing) {
@@ -29,18 +32,21 @@ export const record = mutation({
       date,
       translationCount: 1,
       characterCount: args.characterCount,
-      userId: args.userId,
+      userId: user.id,
     });
   },
 });
 
 export const getToday = query({
-  args: { userId: v.optional(v.string()) },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return null;
+
     const date = todayIso();
     return await ctx.db
       .query("usageStats")
-      .withIndex("by_userId_date", (q) => q.eq("userId", args.userId).eq("date", date))
+      .withIndex("by_userId_date", (q) => q.eq("userId", user.id).eq("date", date))
       .unique();
   },
 });
@@ -49,19 +55,13 @@ export const getRange = query({
   args: {
     from: v.string(),
     to: v.string(),
-    userId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    if (args.userId) {
-      return await ctx.db
-        .query("usageStats")
-        .withIndex("by_userId_date", (q) => q.eq("userId", args.userId!).gte("date", args.from).lte("date", args.to))
-        .collect();
-    }
+    const user = await requireUser(ctx);
 
     return await ctx.db
       .query("usageStats")
-      .withIndex("by_date", (q) => q.gte("date", args.from).lte("date", args.to))
+      .withIndex("by_userId_date", (q) => q.eq("userId", user.id).gte("date", args.from).lte("date", args.to))
       .collect();
   },
 });
