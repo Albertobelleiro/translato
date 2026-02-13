@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 
-type RuntimeConfig = {
-  convexUrl: string;
-  clerkPublishableKey: string;
-};
-
 type MockRoot = {
   render: ReturnType<typeof mock>;
   unmount: ReturnType<typeof mock>;
@@ -14,7 +9,6 @@ type Harness = {
   createRootMock: ReturnType<typeof mock>;
   convexCtorMock: ReturnType<typeof mock>;
   initThemeMock: ReturnType<typeof mock>;
-  fetchSpy: ReturnType<typeof spyOn>;
   roots: MockRoot[];
   components: {
     ClerkProvider: (props: { children?: unknown }) => unknown;
@@ -31,11 +25,6 @@ const HMR_ROOT_KEY = "__TRANSLATO_REACT_ROOT__";
 const HMR_CONTAINER_KEY = "__TRANSLATO_REACT_CONTAINER__";
 const HMR_CONVEX_CLIENT_KEY = "__TRANSLATO_CONVEX_CLIENT__";
 const HMR_CONVEX_URL_KEY = "__TRANSLATO_CONVEX_URL__";
-
-const defaultConfig: RuntimeConfig = {
-  convexUrl: "https://dev.convex.cloud",
-  clerkPublishableKey: "pk_test_default",
-};
 
 const loadMain = () => import(`../../src/ui/main.tsx?test=${crypto.randomUUID()}`);
 
@@ -93,11 +82,10 @@ async function flushBoot(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function setupHarness(options: { configs?: RuntimeConfig[]; fetchError?: Error } = {}): Harness {
+function setupHarness(options: { convexUrl?: string; clerkPublishableKey?: string } = {}): Harness {
   clearHmrGlobals();
-  delete process.env.CONVEX_URL;
-  delete process.env.CLERK_PUBLISHABLE_KEY;
-  delete process.env.VITE_CLERK_PUBLISHABLE_KEY;
+  process.env.VITE_CONVEX_URL = options.convexUrl ?? "https://dev.convex.cloud";
+  process.env.VITE_CLERK_PUBLISHABLE_KEY = options.clerkPublishableKey ?? "pk_test_default";
   spyOn(console, "error").mockImplementation(() => undefined as never);
 
   let currentContainer = createContainer();
@@ -155,23 +143,10 @@ function setupHarness(options: { configs?: RuntimeConfig[]; fetchError?: Error }
   }));
   mock.module("convex/react-clerk", () => ({ ConvexProviderWithClerk }));
 
-  const fetchSpy = spyOn(globalThis, "fetch");
-  if (options.fetchError) {
-    fetchSpy.mockRejectedValue(options.fetchError);
-  } else {
-    const queue = options.configs && options.configs.length > 0 ? [...options.configs] : [defaultConfig];
-    const fallback = queue[queue.length - 1] ?? defaultConfig;
-    fetchSpy.mockImplementation((async () => {
-      const payload = queue.shift() ?? fallback;
-      return new Response(JSON.stringify(payload), { status: 200 });
-    }) as never);
-  }
-
   return {
     createRootMock,
     convexCtorMock,
     initThemeMock,
-    fetchSpy,
     roots,
     components: {
       ClerkProvider,
@@ -210,7 +185,7 @@ describe("Unit - ui/main bootstrap", () => {
 
   test("passes runtime publishable key into ClerkProvider", async () => {
     const harness = setupHarness({
-      configs: [{ convexUrl: "https://dev.convex.cloud", clerkPublishableKey: "pk_test_runtime_key" }],
+      clerkPublishableKey: "pk_test_runtime_key",
     });
     await loadMain();
     await flushBoot();
@@ -225,10 +200,8 @@ describe("Unit - ui/main bootstrap", () => {
 describe("Integration - HMR singleton behavior", () => {
   test("reuses React root and Convex client across hot reload imports", async () => {
     const harness = setupHarness({
-      configs: [
-        { convexUrl: "https://dev.convex.cloud", clerkPublishableKey: "pk_test_1" },
-        { convexUrl: "https://dev.convex.cloud", clerkPublishableKey: "pk_test_1" },
-      ],
+      convexUrl: "https://dev.convex.cloud",
+      clerkPublishableKey: "pk_test_1",
     });
 
     await loadMain();
@@ -243,14 +216,13 @@ describe("Integration - HMR singleton behavior", () => {
 
   test("creates a new Convex client when runtime Convex URL changes", async () => {
     const harness = setupHarness({
-      configs: [
-        { convexUrl: "https://dev-a.convex.cloud", clerkPublishableKey: "pk_test_1" },
-        { convexUrl: "https://dev-b.convex.cloud", clerkPublishableKey: "pk_test_1" },
-      ],
+      convexUrl: "https://dev-a.convex.cloud",
+      clerkPublishableKey: "pk_test_1",
     });
 
     await loadMain();
     await flushBoot();
+    process.env.VITE_CONVEX_URL = "https://dev-b.convex.cloud";
     await loadMain();
     await flushBoot();
 
@@ -291,13 +263,13 @@ describe("E2E - full boot flow", () => {
   });
 
   test("writes readable boot error to root container when runtime config fails", async () => {
-    const harness = setupHarness({ fetchError: new Error("network down") });
+    const harness = setupHarness();
+    delete process.env.VITE_CONVEX_URL;
 
     await loadMain();
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await flushBoot();
 
     expect(harness.createRootMock).not.toHaveBeenCalled();
-    expect(harness.getContainer().textContent).toContain("Unable to load runtime config");
-    expect(harness.fetchSpy).toHaveBeenCalledTimes(2);
+    expect(harness.getContainer().textContent).toContain("Missing VITE_CONVEX_URL");
   });
 });

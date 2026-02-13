@@ -8,6 +8,8 @@ import {
   handleUsage,
 } from "./routes.ts";
 
+// Local Bun server entrypoint kept for development workflows.
+// Production on Vercel serves the Vite `dist/` output and does not run this file.
 if (!process.env.DEEPL_API_KEY) {
   console.error("Missing DEEPL_API_KEY in .env");
   process.exit(1);

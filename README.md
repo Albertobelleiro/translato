@@ -14,9 +14,10 @@ Fast, minimal online translator powered by the DeepL API.
 ## Stack
 
 - **Runtime:** Bun
-- **Frontend:** React 19, CSS custom properties
-- **Backend:** Bun.serve() with route handlers
-- **API:** DeepL Free API
+- **Frontend:** React 19 + Vite build output for static hosting
+- **Backend:** Convex (actions/queries/mutations)
+- **Auth:** Clerk
+- **API:** DeepL Free API (called from Convex action)
 - **Styling:** Design system tokens (no Tailwind)
 
 ## Setup
@@ -25,31 +26,47 @@ Fast, minimal online translator powered by the DeepL API.
 bun install
 ```
 
-Create `.env` in the project root:
+Create `.env.local` in the project root:
 
 ```
-DEEPL_API_KEY=your_key_here
+VITE_CONVEX_URL=https://your-deployment.convex.cloud
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_or_pk_live_key
 ```
 
-Get a free API key at [deepl.com/pro-api](https://www.deepl.com/pro-api).
+For Convex server-side variables, set them in the Convex dashboard:
+- `DEEPL_API_KEY`
+- `CLERK_JWT_ISSUER_DOMAIN`
+- `INTERNAL_ALLOWED_EMAILS`
+- `INTERNAL_ALLOWED_DOMAINS`
 
 ## Run
 
 ```bash
 bun --hot src/server/index.ts
+bun run dev:web
 ```
 
-Open [localhost:3000](http://localhost:3000).
+- `bun --hot src/server/index.ts` keeps the Bun server workflow.
+- `bun run dev:web` runs the Vite SPA workflow used for production builds.
 
 ## Structure
 
 ```
 src/
   translator/   Domain -- DeepL integration, language data, types
-  server/       HTTP -- Bun.serve(), API routes
+  server/       HTTP -- Bun.serve(), local/dev-only routes
   ui/           Presentation -- React components, styles
+convex/         Backend -- auth-gated actions, queries, mutations
 docs/           Design system, techstack, TODO plans
 ```
+
+## Production build
+
+```bash
+bun run build
+```
+
+This outputs static assets to `dist/` for Vercel deployment.
 
 ## License
 

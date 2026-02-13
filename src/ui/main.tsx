@@ -8,21 +8,12 @@ import { api } from "../../convex/_generated/api";
 
 import { App } from "./App.tsx";
 import { initTheme } from "./hooks/useTheme.ts";
+import { loadPublicRuntimeConfig } from "./runtimeConfig.ts";
 import "./styles/app.css";
 
 if (import.meta.hot) {
   import.meta.hot.accept();
 }
-
-type RuntimeConfig = {
-  convexUrl?: string;
-  clerkPublishableKey?: string;
-};
-
-type LoadedRuntimeConfig = {
-  convexUrl: string;
-  clerkPublishableKey: string;
-};
 
 type ConvexRuntimeBoundaryProps = {
   children: ReactNode;
@@ -38,30 +29,6 @@ type HmrGlobals = {
   __TRANSLATO_CONVEX_CLIENT__?: ConvexReactClient;
   __TRANSLATO_CONVEX_URL__?: string;
 };
-
-const clientEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fetchRuntimeConfig(): Promise<RuntimeConfig> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      const response = await fetch("/api/config", { cache: "no-store" });
-      if (!response.ok) throw new Error(`Unable to load runtime config from /api/config (${response.status})`);
-      return await response.json() as RuntimeConfig;
-    } catch (error) {
-      lastError = error;
-      if (attempt === 0) await sleep(250);
-    }
-  }
-
-  throw lastError instanceof Error
-    ? new Error(`Unable to load runtime config: ${lastError.message}`)
-    : new Error("Unable to load runtime config");
-}
 
 class ConvexRuntimeBoundary extends Component<ConvexRuntimeBoundaryProps, ConvexRuntimeBoundaryState> {
   override state: ConvexRuntimeBoundaryState = { message: null };
@@ -87,22 +54,6 @@ class ConvexRuntimeBoundary extends Component<ConvexRuntimeBoundaryProps, Convex
       </div>
     );
   }
-}
-
-async function loadRuntimeConfig(): Promise<LoadedRuntimeConfig> {
-  let convexUrl = clientEnv?.CONVEX_URL;
-  let clerkPublishableKey = clientEnv?.CLERK_PUBLISHABLE_KEY ?? clientEnv?.VITE_CLERK_PUBLISHABLE_KEY;
-
-  if (!convexUrl || !clerkPublishableKey) {
-    const config = await fetchRuntimeConfig();
-    convexUrl ??= config.convexUrl;
-    clerkPublishableKey ??= config.clerkPublishableKey;
-  }
-
-  if (!convexUrl) throw new Error("Missing CONVEX_URL. Run `bunx convex dev` to configure it.");
-  if (!clerkPublishableKey) throw new Error("Missing CLERK_PUBLISHABLE_KEY (or VITE_CLERK_PUBLISHABLE_KEY) in .env");
-
-  return { convexUrl, clerkPublishableKey };
 }
 
 function InternalAccessGate() {
@@ -172,7 +123,7 @@ async function boot(): Promise<void> {
   // Apply saved theme before rendering to prevent flash
   initTheme();
 
-  const { convexUrl, clerkPublishableKey } = await loadRuntimeConfig();
+  const { convexUrl, clerkPublishableKey } = loadPublicRuntimeConfig();
   const convexClient = getOrCreateConvexClient(convexUrl);
   const reactRoot = getOrCreateReactRoot(container);
 

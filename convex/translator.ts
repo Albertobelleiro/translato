@@ -5,6 +5,34 @@ import { requireUser } from "./helpers";
 import { mapDeepLError } from "./lib/errors";
 
 const DEEPL_URL = "https://api-free.deepl.com/v2/translate";
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 20;
+
+type RateLimitBucket = {
+  count: number;
+  windowStartedAt: number;
+};
+
+// Best-effort burst protection for translation calls.
+const translationRateLimitBuckets = new Map<string, RateLimitBucket>();
+
+function consumeTranslationToken(userId: string): number | null {
+  const now = Date.now();
+  const existing = translationRateLimitBuckets.get(userId);
+
+  if (!existing || now - existing.windowStartedAt >= RATE_LIMIT_WINDOW_MS) {
+    translationRateLimitBuckets.set(userId, { count: 1, windowStartedAt: now });
+    return null;
+  }
+
+  if (existing.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return RATE_LIMIT_WINDOW_MS - (now - existing.windowStartedAt);
+  }
+
+  existing.count += 1;
+  translationRateLimitBuckets.set(userId, existing);
+  return null;
+}
 
 export const translate = action({
   args: {
@@ -16,7 +44,11 @@ export const translate = action({
     if (!args.text.trim()) throw new Error("Text must not be empty");
     if (new TextEncoder().encode(args.text).length >= 128 * 1024) throw new Error("Text exceeds 128 KiB limit");
 
-    await requireUser(ctx);
+    const user = await requireUser(ctx);
+    const retryAfterMs = consumeTranslationToken(user.id);
+    if (retryAfterMs !== null) {
+      throw new Error(`Rate limit exceeded. Try again in ${Math.ceil(retryAfterMs / 1000)}s`);
+    }
 
     const body: {
       text: string[];
