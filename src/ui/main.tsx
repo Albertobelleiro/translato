@@ -8,7 +8,7 @@ import { api } from "../../convex/_generated/api";
 
 import { App } from "./App.tsx";
 import { initTheme } from "./hooks/useTheme.ts";
-import { loadPublicRuntimeConfig } from "./runtimeConfig.ts";
+import { loadPublicRuntimeConfigAsync } from "./runtimeConfig.ts";
 import "./styles/app.css";
 
 if (import.meta.hot) {
@@ -123,7 +123,7 @@ async function boot(): Promise<void> {
   // Apply saved theme before rendering to prevent flash
   initTheme();
 
-  const { convexUrl, clerkPublishableKey } = loadPublicRuntimeConfig();
+  const { convexUrl, clerkPublishableKey } = await loadPublicRuntimeConfigAsync();
   const convexClient = getOrCreateConvexClient(convexUrl);
   const reactRoot = getOrCreateReactRoot(container);
 

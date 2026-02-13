@@ -66,18 +66,33 @@ function validateClerkKey(value: string): string {
 }
 
 export function loadPublicRuntimeConfig(): PublicRuntimeConfig {
-  const convexUrl = validateConvexUrl(
-    requireEnv("VITE_CONVEX_URL", "Set it in .env.local for development and in Vercel for deployments."),
-  );
-  const clerkPublishableKey = validateClerkKey(
-    requireEnv(
-      "VITE_CLERK_PUBLISHABLE_KEY",
-      "Set the production pk_live_* key in Vercel and a test key for local development.",
-    ),
-  );
+  const convexUrl = readEnv("VITE_CONVEX_URL");
+  const clerkPublishableKey = readEnv("VITE_CLERK_PUBLISHABLE_KEY");
 
-  return {
-    convexUrl,
-    clerkPublishableKey,
-  };
+  if (convexUrl && clerkPublishableKey) {
+    return {
+      convexUrl: validateConvexUrl(convexUrl),
+      clerkPublishableKey: validateClerkKey(clerkPublishableKey),
+    };
+  }
+
+  throw new Error("__NEEDS_SERVER_CONFIG__");
+}
+
+export async function loadPublicRuntimeConfigAsync(): Promise<PublicRuntimeConfig> {
+  try {
+    return loadPublicRuntimeConfig();
+  } catch {
+    // Env vars not available client-side (Bun dev server) — fetch from /api/config
+    const res = await fetch("/api/config");
+    if (!res.ok) throw new Error(`Failed to load config from server: ${res.status}`);
+    const data = (await res.json()) as { convexUrl?: string; clerkPublishableKey?: string };
+    if (!data.convexUrl || !data.clerkPublishableKey) {
+      throw new Error("Server config missing convexUrl or clerkPublishableKey");
+    }
+    return {
+      convexUrl: validateConvexUrl(data.convexUrl),
+      clerkPublishableKey: validateClerkKey(data.clerkPublishableKey),
+    };
+  }
 }
