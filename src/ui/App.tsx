@@ -77,6 +77,14 @@ function reducer(state: State, action: Action): State {
     case "SET_ERROR": return { ...state, error: action.payload };
     case "SWAP_LANGS": {
       const newTarget = state.targetLang === "ES" ? "EN-US" : "ES";
+      if (!state.targetText.trim()) {
+        return {
+          ...state,
+          sourceLang: "",
+          targetLang: newTarget,
+          targetText: "",
+        };
+      }
       return {
         ...state,
         sourceText: state.targetText,

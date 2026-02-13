@@ -1,4 +1,5 @@
 import { ClerkProvider, SignIn, SignOutButton, SignedIn, SignedOut, useAuth, useUser } from "@clerk/clerk-react";
+import { Analytics } from "@vercel/analytics/react";
 import { ConvexReactClient, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Component, type ErrorInfo, type ReactNode } from "react";
@@ -126,17 +127,28 @@ function InternalAccessGate() {
   return <App />;
 }
 
-const root = document.getElementById("root");
+let reactRoot: ReturnType<typeof createRoot> | null = null;
+let convexClient: ConvexReactClient | null = null;
+
 async function boot(): Promise<void> {
-  if (!root) return;
+  const container = document.getElementById("root");
+  if (!container) return;
 
   // Apply saved theme before rendering to prevent flash
   initTheme();
 
   const { convexUrl, clerkPublishableKey } = await loadRuntimeConfig();
-  const convex = new ConvexReactClient(convexUrl);
+  if (!convexClient) {
+    convexClient = new ConvexReactClient(convexUrl);
+  }
 
-  createRoot(root).render(
+  if (!reactRoot) {
+    reactRoot = createRoot(container);
+  }
+
+  reactRoot.render(
+    <>
+    <Analytics />
     <ClerkProvider
       publishableKey={clerkPublishableKey}
       appearance={{
@@ -156,19 +168,21 @@ async function boot(): Promise<void> {
         </div>
       </SignedOut>
       <SignedIn>
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
           <ConvexRuntimeBoundary>
             <InternalAccessGate />
           </ConvexRuntimeBoundary>
         </ConvexProviderWithClerk>
       </SignedIn>
-    </ClerkProvider>,
+    </ClerkProvider>
+    </>,
   );
 }
 
 void boot().catch((error: unknown) => {
   console.error(error);
-  if (root) {
-    root.textContent = error instanceof Error ? error.message : "Failed to initialize app";
+  const container = document.getElementById("root");
+  if (container) {
+    container.textContent = error instanceof Error ? error.message : "Failed to initialize app";
   }
 });

@@ -33,8 +33,6 @@ export function HistoryTabs({
 }) {
   const [activeTab, setActiveTab] = useState<"history" | "dictionary">("history");
 
-  if (items.length === 0 && activeTab === "history") return null;
-
   return (
     <section className="history-section">
       <div className="history-tabs">
