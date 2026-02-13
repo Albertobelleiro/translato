@@ -1,17 +1,11 @@
 import {
   DeepLError,
   type DeepLLanguage,
-  type DeepLTranslateBody,
-  type DeepLTranslateResult,
   type DeepLUsage,
-  type TranslateResponse,
 } from "./types.ts";
 const BASE_URL = "https://api-free.deepl.com/v2";
-const authHeader = {
-  Authorization: `DeepL-Auth-Key ${process.env.DEEPL_API_KEY}`,
-  "Content-Type": "application/json",
-};
-const authGetHeader = { Authorization: authHeader.Authorization };
+const authToken = `DeepL-Auth-Key ${process.env.DEEPL_API_KEY}`;
+const authGetHeader = { Authorization: authToken };
 const languageCache: Partial<Record<"source" | "target", DeepLLanguage[]>> = {};
 function mapDeepLError(status: number): string {
   if (status === 403) return "Invalid API key";
@@ -23,25 +17,6 @@ function mapDeepLError(status: number): string {
 async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) throw new DeepLError(res.status, mapDeepLError(res.status));
   return await res.json() as T;
-}
-export async function translate(text: string, targetLang: string, sourceLang?: string): Promise<TranslateResponse> {
-  const body: DeepLTranslateBody = { text: [text], target_lang: targetLang, model_type: "latency_optimized" };
-  if (sourceLang) body.source_lang = sourceLang;
-  try {
-    const res = await fetch(`${BASE_URL}/translate`, {
-      method: "POST",
-      headers: authHeader,
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(5000),
-    });
-    const data = await parseResponse<DeepLTranslateResult>(res);
-    const first = data.translations[0];
-    return { translatedText: first?.text ?? "", detectedSourceLang: first?.detected_source_language ?? "" };
-  } catch (error) {
-    if (error instanceof DeepLError) throw error;
-    if (error instanceof Error && error.name === "TimeoutError") throw new DeepLError(504, "Translation service unavailable");
-    throw new DeepLError(502, "Translation service unavailable");
-  }
 }
 export async function getLanguages(type: "source" | "target"): Promise<DeepLLanguage[]> {
   if (languageCache[type]) return languageCache[type]!;

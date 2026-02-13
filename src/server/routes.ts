@@ -1,6 +1,5 @@
-import { getLanguages, getUsage, translate } from "../translator/translate.ts";
-import { DeepLError, type TranslateRequest } from "../translator/types.ts";
-const MAX_TEXT_BYTES = 128 * 1024;
+import { getLanguages, getUsage } from "../translator/translate.ts";
+import { DeepLError } from "../translator/types.ts";
 let convexUrlCache: string | null | undefined;
 let clerkPublishableKeyCache: string | null | undefined;
 let internalAllowedEmailsCache: string[] | undefined;
@@ -10,24 +9,6 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 function errorResponse(message: string, status: number): Response {
   return jsonResponse({ error: message }, status);
-}
-export async function handleTranslate(req: Request): Promise<Response> {
-  let body: TranslateRequest;
-  try {
-    body = await req.json() as TranslateRequest;
-  } catch {
-    return errorResponse("Invalid JSON body", 400);
-  }
-  if (!body.text?.trim()) return errorResponse("Text must not be empty", 400);
-  if (!body.target_lang) return errorResponse("Target language is required", 400);
-  if (new TextEncoder().encode(body.text).length >= MAX_TEXT_BYTES) return errorResponse("Text exceeds 128 KiB limit", 400);
-  try {
-    const result = await translate(body.text, body.target_lang, body.source_lang);
-    return jsonResponse(result);
-  } catch (error) {
-    if (error instanceof DeepLError) return errorResponse(error.message, error.status);
-    return errorResponse("Internal server error", 500);
-  }
 }
 export async function handleLanguages(): Promise<Response> {
   try {

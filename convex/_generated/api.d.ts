@@ -9,6 +9,8 @@
  */
 
 import type * as helpers from "../helpers.js";
+import type * as lib_dates from "../lib/dates.js";
+import type * as lib_errors from "../lib/errors.js";
 import type * as preferences from "../preferences.js";
 import type * as stats from "../stats.js";
 import type * as translations from "../translations.js";
@@ -22,6 +24,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   helpers: typeof helpers;
+  "lib/dates": typeof lib_dates;
+  "lib/errors": typeof lib_errors;
   preferences: typeof preferences;
   stats: typeof stats;
   translations: typeof translations;

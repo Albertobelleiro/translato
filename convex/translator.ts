@@ -2,16 +2,9 @@ import { v } from "convex/values";
 import { api } from "./_generated/api";
 import { action } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { mapDeepLError } from "./lib/errors";
 
 const DEEPL_URL = "https://api-free.deepl.com/v2/translate";
-
-function mapDeepLError(status: number) {
-  if (status === 403) return { status: 401, message: "Invalid API key" };
-  if (status === 429) return { status: 429, message: "Rate limit exceeded" };
-  if (status === 456) return { status: 429, message: "Translation quota exceeded" };
-  if (status >= 500) return { status: 502, message: "Translation service unavailable" };
-  return { status: 502, message: "Translation request failed" };
-}
 
 export const translate = action({
   args: {
