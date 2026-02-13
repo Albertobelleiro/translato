@@ -32,12 +32,24 @@ describe("translate()", () => {
     expect(JSON.parse((fetchSpy.mock.calls[0]?.[1] as RequestInit).body as string)).toEqual({ text: ["Hello"], target_lang: "ES", model_type: "latency_optimized" });
   });
 
+  test("attaches timeout signal to requests", async () => {
+    fetchSpy.mockResolvedValue(new Response(JSON.stringify(mockDeepLTranslation("Hola")), { status: 200 }));
+    const { translate } = await loadModule();
+    await translate("Hello", "ES");
+    expect((fetchSpy.mock.calls[0]?.[1] as RequestInit).signal).toBeDefined();
+  });
+
   test("maps DeepL HTTP errors to DeepLError", async () => {
     const { translate } = await loadModule();
     for (const status of [403, 429, 456, 503]) {
       fetchSpy.mockResolvedValueOnce(new Response("{}", { status }));
-      await expect(translate("Hello", "ES")).rejects.toBeInstanceOf(DeepLError);
-      await expect(translate("Hello", "ES")).rejects.toMatchObject({ status });
+      try {
+        await translate("Hello", "ES");
+        throw new Error("Expected translate() to throw");
+      } catch (error) {
+        expect(error).toBeInstanceOf(DeepLError);
+        expect(error).toMatchObject({ status });
+      }
     }
   });
 
@@ -83,5 +95,13 @@ describe("getUsage()", () => {
     fetchSpy.mockResolvedValue(new Response("{}", { status: 403 }));
     const { getUsage } = await loadModule();
     await expect(getUsage()).rejects.toMatchObject({ status: 403 });
+  });
+
+  test("sends auth header", async () => {
+    fetchSpy.mockResolvedValue(new Response(JSON.stringify(mockDeepLUsage()), { status: 200 }));
+    const { getUsage } = await loadModule();
+    await getUsage();
+    const headers = (fetchSpy.mock.calls[0]?.[1] as RequestInit).headers as Record<string, string>;
+    expect(headers.Authorization).toBe("DeepL-Auth-Key test-key");
   });
 });
