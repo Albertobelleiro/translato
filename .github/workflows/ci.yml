@@ -26,7 +26,7 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
       - name: Test
-        run: bun test
+        run: bun test --max-concurrency=1 tests/convex/*.test.ts tests/server/*.test.ts tests/translator/*.test.ts tests/ui/*.test.ts
 
   build-node:
     name: Build (Vite on Node)

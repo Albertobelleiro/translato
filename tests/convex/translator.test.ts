@@ -19,6 +19,8 @@ const loadTranslatorModule = () => import(`../../convex/translator.ts?test=${cry
 beforeEach(() => {
   mock.restore();
   process.env.DEEPL_API_KEY = "test-key";
+  process.env.INTERNAL_ALLOWED_EMAILS = "me@example.com";
+  delete process.env.INTERNAL_ALLOWED_DOMAINS;
   setupAuthMocks();
 });
 
