@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { convexTest } from "convex-test";
-import { api } from "../../convex/_generated/api";
+import { makeFunctionReference } from "convex/server";
 import { mapDeepLError } from "../../convex/lib/errors";
 import schema from "../../convex/schema";
 
+const translateActionRef = makeFunctionReference<"action">("translator:translate");
+const getTodayQueryRef = makeFunctionReference<"query">("stats:getToday");
+
 const convexModules = {
-  "convex/_generated/api.ts": () => import("../../convex/_generated/api.ts"),
+  "convex/_generated/api.js": () => import("../../convex/_generated/api.js"),
   "convex/stats.ts": () => import("../../convex/stats.ts"),
   "convex/translator.ts": () => import("../../convex/translator.ts"),
 };
@@ -48,7 +51,7 @@ describe("translate action auth enforcement", () => {
     const t = createTestConvex();
     const fetchSpy = spyOn(globalThis, "fetch");
 
-    await expect(t.action(api.translator.translate, {
+    await expect(t.action(translateActionRef, {
       text: "Hello",
       targetLang: "ES",
     })).rejects.toThrow("Not authenticated");
@@ -65,12 +68,12 @@ describe("translate action auth enforcement", () => {
       translations: [{ text: "Hola", detected_source_language: "EN" }],
     }), { status: 200 }));
 
-    await expect(t.action(api.translator.translate, {
+    await expect(t.action(translateActionRef, {
       text: "Hello",
       targetLang: "ES",
     })).resolves.toEqual({ translatedText: "Hola", detectedSourceLang: "EN" });
 
-    const usage = await t.query(api.stats.getToday);
+    const usage = await t.query(getTodayQueryRef);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(usage).toMatchObject({
       userId: "user|allowed",
@@ -90,14 +93,14 @@ describe("translate action auth enforcement", () => {
     }), { status: 200 })) as never);
 
     for (let i = 0; i < 20; i += 1) {
-      await expect(t.action(api.translator.translate, { text: `Hello ${i}`, targetLang: "ES" })).resolves.toEqual({
+      await expect(t.action(translateActionRef, { text: `Hello ${i}`, targetLang: "ES" })).resolves.toEqual({
         translatedText: "Hola",
         detectedSourceLang: "EN",
       });
     }
 
-    const usage = await t.query(api.stats.getToday);
-    await expect(t.action(api.translator.translate, { text: "Hello 21", targetLang: "ES" })).rejects.toThrow("Rate limit exceeded");
+    const usage = await t.query(getTodayQueryRef);
+    await expect(t.action(translateActionRef, { text: "Hello 21", targetLang: "ES" })).rejects.toThrow("Rate limit exceeded");
 
     expect(fetchSpy).toHaveBeenCalledTimes(20);
     expect(usage).toMatchObject({
