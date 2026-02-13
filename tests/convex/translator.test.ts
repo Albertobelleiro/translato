@@ -1,13 +1,25 @@
 import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { mapDeepLError } from "../../convex/lib/errors";
 
+function setupAuthMocks(): void {
+  mock.module("../../convex/helpers.ts", () => ({
+    requireUser: async (ctx: { auth: { getUserIdentity: () => Promise<{ tokenIdentifier: string; email?: string } | null> } }) => {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) throw new Error("Not authenticated");
+      return {
+        id: identity.tokenIdentifier,
+        email: identity.email,
+      };
+    },
+  }));
+}
+
 const loadTranslatorModule = () => import(`../../convex/translator.ts?test=${crypto.randomUUID()}`);
 
 beforeEach(() => {
   mock.restore();
   process.env.DEEPL_API_KEY = "test-key";
-  process.env.INTERNAL_ALLOWED_EMAILS = "me@example.com";
-  delete process.env.INTERNAL_ALLOWED_DOMAINS;
+  setupAuthMocks();
 });
 
 describe("mapDeepLError", () => {
@@ -58,7 +70,7 @@ describe("translate action auth enforcement", () => {
 
     const runMutation = mock(async () => null);
     const ctx = {
-      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|throttle", email: "me@example.com" }) },
+      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|allowed", email: "me@example.com" }) },
       runMutation,
     } as never;
 
@@ -79,7 +91,7 @@ describe("translate action auth enforcement", () => {
 
     const runMutation = mock(async () => null);
     const ctx = {
-      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|1", email: "me@example.com" }) },
+      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|throttle", email: "me@example.com" }) },
       runMutation,
     } as never;
 
