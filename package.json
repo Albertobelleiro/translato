@@ -33,7 +33,7 @@
     "@hugeicons/core-free-icons": "^3.1.1",
     "@hugeicons/react": "^1.1.5",
     "@vercel/analytics": "^1.6.1",
-    "animejs": "^4.3.5",
+    "animejs": "^4.3.6",
     "convex": "^1.31.7",
     "facehash": "^0.0.7",
     "nucleo-flags": "^1.1.3",
