@@ -3,7 +3,6 @@ import { convexTest } from "convex-test";
 import { makeFunctionReference } from "convex/server";
 import { mapDeepLError } from "../../convex/lib/errors";
 import schema from "../../convex/schema";
-import { __resetTranslationRateLimitBucketsForTests } from "../../convex/translator.ts";
 
 const translateActionRef = makeFunctionReference<"action">("translator:translate");
 const getTodayQueryRef = makeFunctionReference<"query">("stats:getToday");
@@ -34,7 +33,6 @@ async function expectActionResolves<T>(
 
 beforeEach(() => {
   mock.restore();
-  __resetTranslationRateLimitBucketsForTests();
   process.env.DEEPL_API_KEY = "test-key";
   process.env.INTERNAL_ALLOWED_EMAILS = "me@example.com";
   delete process.env.INTERNAL_ALLOWED_DOMAINS;
