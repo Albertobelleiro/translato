@@ -2,14 +2,20 @@ import { UserButton } from "@clerk/clerk-react";
 import { Globe02Icon, LanguageSquareIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 
 import { api } from "../../convex/_generated/api";
-import { languages } from "../translator/languages.ts";
+import { languages, sourceLangs } from "../translator/languages.ts";
 import { History } from "./components/History.tsx";
 import { LanguageSelector } from "./components/LanguageSelector.tsx";
 import { SwapButton } from "./components/SwapButton.tsx";
 import { TranslatorPanel } from "./components/TranslatorPanel.tsx";
+import {
+  appendTranslationSnapshot,
+  loadTranslationHistory,
+  persistTranslationHistory,
+  type TranslationSnapshot,
+} from "./historyStore.ts";
 import { useTranslate } from "./hooks/useTranslate.ts";
 
 interface State {
@@ -45,6 +51,18 @@ function targetFromDetectedLanguage(code: string): string | null {
   return null;
 }
 
+function sourceLanguageFromDetected(code: string) {
+  const normalized = code.toUpperCase();
+  if (!normalized) return null;
+  if (normalized === "EN" || normalized.startsWith("EN-")) {
+    return sourceLangs.find((lang) => lang.code === "EN") ?? null;
+  }
+  if (normalized === "ES" || normalized.startsWith("ES-")) {
+    return sourceLangs.find((lang) => lang.code === "ES") ?? null;
+  }
+  return sourceLangs.find((lang) => lang.code === normalized) ?? null;
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "SET_SOURCE_TEXT": return { ...state, sourceText: action.payload };
@@ -69,7 +87,10 @@ const initialState: State = {
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [historyItems, setHistoryItems] = useState(loadTranslationHistory);
   const didHydratePreferences = useRef(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestSnapshotRef = useRef<TranslationSnapshot | null>(null);
   const { isAuthenticated } = useConvexAuth();
   const preferences = useQuery(api.preferences.get, isAuthenticated ? {} : "skip");
   const savePreferences = useMutation(api.preferences.save);
@@ -78,6 +99,8 @@ export function App() {
     state.sourceLang,
     state.targetLang,
   );
+  const detectedSourceLanguage = sourceLanguageFromDetected(detectedLang);
+  const DetectedFlag = detectedSourceLanguage?.Flag;
 
   useEffect(() => { dispatch({ type: "SET_TARGET_TEXT", payload: translatedText }); }, [translatedText]);
   useEffect(() => { dispatch({ type: "SET_LOADING", payload: isLoading }); }, [isLoading]);
@@ -105,11 +128,12 @@ export function App() {
   }, [state.targetLang, savePreferences, isAuthenticated]);
 
   useEffect(() => {
+    if (state.sourceLang) return;
     if (!state.sourceText.trim()) return;
     const detectedTarget = targetFromDetectedLanguage(detectedLang);
     if (!detectedTarget || detectedTarget === state.targetLang) return;
     dispatch({ type: "SET_TARGET_LANG", payload: detectedTarget });
-  }, [detectedLang, state.sourceText, state.targetLang]);
+  }, [detectedLang, state.sourceLang, state.sourceText, state.targetLang]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -121,6 +145,55 @@ export function App() {
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [forceTranslate]);
+
+  useEffect(() => {
+    if (!state.sourceText.trim() || !state.targetText.trim()) {
+      latestSnapshotRef.current = null;
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (state.isLoading || state.error) return;
+
+    latestSnapshotRef.current = {
+      sourceText: state.sourceText,
+      targetText: state.targetText,
+      sourceLang: state.sourceLang || "auto",
+      targetLang: state.targetLang,
+      detectedSourceLang: detectedLang || undefined,
+    };
+
+    if (autosaveTimerRef.current) return;
+
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      const snapshot = latestSnapshotRef.current;
+      if (!snapshot) return;
+
+      setHistoryItems((previous) => {
+        const next = appendTranslationSnapshot(previous, snapshot);
+        if (next !== previous) persistTranslationHistory(next);
+        return next;
+      });
+    }, 10_000);
+  }, [
+    detectedLang,
+    state.error,
+    state.isLoading,
+    state.sourceLang,
+    state.sourceText,
+    state.targetLang,
+    state.targetText,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, []);
 
   return (
     <div className="app">
@@ -148,8 +221,14 @@ export function App() {
         <div className="lang-bar">
           <div className="lang-bar-side">
             <button className="lang-trigger" type="button" disabled>
-              <HugeiconsIcon icon={Globe02Icon} size={18} />
-              <span className="lang-trigger-label">Detect language</span>
+              {DetectedFlag ? <DetectedFlag size={20} aria-hidden /> : <HugeiconsIcon icon={Globe02Icon} size={18} />}
+              <span className="lang-trigger-label">
+                {detectedSourceLanguage
+                  ? `${detectedSourceLanguage.name} (detected)`
+                  : detectedLang
+                    ? `${detectedLang} (detected)`
+                    : "Detect language"}
+              </span>
             </button>
           </div>
           <SwapButton onSwap={() => dispatch({ type: "SWAP_LANGS" })} disabled />
@@ -177,19 +256,18 @@ export function App() {
           />
         </div>
 
-        {isAuthenticated && (
-          <History
-            onSelect={(item) => {
-              dispatch({ type: "SET_SOURCE_TEXT", payload: item.sourceText });
-              dispatch({ type: "SET_TARGET_TEXT", payload: item.targetText });
-              dispatch({ type: "SET_SOURCE_LANG", payload: "" });
-              dispatch({
-                type: "SET_TARGET_LANG",
-                payload: targetFromDetectedLanguage(item.detectedSourceLang ?? "") ?? toBilateralTarget(item.targetLang),
-              });
-            }}
-          />
-        )}
+        <History
+          items={historyItems}
+          onSelect={(item) => {
+            dispatch({ type: "SET_SOURCE_TEXT", payload: item.sourceText });
+            dispatch({ type: "SET_TARGET_TEXT", payload: item.targetText });
+            dispatch({ type: "SET_SOURCE_LANG", payload: "" });
+            dispatch({
+              type: "SET_TARGET_LANG",
+              payload: targetFromDetectedLanguage(item.detectedSourceLang ?? "") ?? toBilateralTarget(item.targetLang),
+            });
+          }}
+        />
       </main>
 
       <footer className="app-footer">

@@ -3,6 +3,43 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "../../../convex/_generated/api";
 
+type CachedTranslation = {
+  translatedText: string;
+  detectedLang: string;
+  cachedAt: number;
+};
+
+const translationCache = new Map<string, CachedTranslation>();
+const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_LIMIT = 300;
+
+function getCacheKey(text: string, sourceLang: string, targetLang: string): string {
+  return `${text}\u0000${sourceLang || "auto"}\u0000${targetLang}`;
+}
+
+function getCachedTranslation(cacheKey: string): CachedTranslation | null {
+  const cached = translationCache.get(cacheKey);
+  if (!cached) return null;
+  if (Date.now() - cached.cachedAt > CACHE_TTL_MS) {
+    translationCache.delete(cacheKey);
+    return null;
+  }
+  return cached;
+}
+
+function setCachedTranslation(cacheKey: string, translatedText: string, detectedLang: string): void {
+  if (translationCache.size >= CACHE_LIMIT) {
+    const oldestKey = translationCache.keys().next().value;
+    if (oldestKey) translationCache.delete(oldestKey);
+  }
+
+  translationCache.set(cacheKey, {
+    translatedText,
+    detectedLang,
+    cachedAt: Date.now(),
+  });
+}
+
 interface TranslateResult {
   translatedText: string;
   detectedLang: string;
@@ -33,6 +70,18 @@ export function useTranslate(
       return;
     }
 
+    const cacheKey = getCacheKey(text, sourceLang, targetLang);
+    const cached = getCachedTranslation(cacheKey);
+    if (cached) {
+      abortRef.current?.abort();
+      requestIdRef.current += 1;
+      setTranslatedText(cached.translatedText);
+      setDetectedLang(cached.detectedLang);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -47,6 +96,7 @@ export function useTranslate(
     })
       .then((data) => {
         if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+        setCachedTranslation(cacheKey, data.translatedText, data.detectedSourceLang);
         setTranslatedText(data.translatedText);
         setDetectedLang(data.detectedSourceLang);
         setIsLoading(false);

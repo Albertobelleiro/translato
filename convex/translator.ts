@@ -61,15 +61,6 @@ export const translate = action({
 
     await requireUser(ctx);
 
-    await ctx.runMutation(api.translations.save, {
-      sourceText: args.text,
-      targetText: translatedText,
-      sourceLang: args.sourceLang || "auto",
-      targetLang: args.targetLang,
-      detectedSourceLang,
-      characterCount: args.text.length,
-    });
-
     await ctx.runMutation(api.stats.record, {
       characterCount: args.text.length,
     });

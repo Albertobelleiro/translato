@@ -1,9 +1,4 @@
-import { useQuery } from "convex/react";
-
-import { api } from "../../../convex/_generated/api";
-import type { Doc } from "../../../convex/_generated/dataModel";
-
-type TranslationDoc = Doc<"translations">;
+import type { TranslationHistoryItem } from "../historyStore.ts";
 
 function short(text: string) {
   return text.length > 56 ? `${text.slice(0, 56)}...` : text;
@@ -17,9 +12,14 @@ function ago(timestamp: number) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function History({ onSelect }: { onSelect: (item: TranslationDoc) => void }) {
-  const items = useQuery(api.translations.list, { limit: 20 });
-  if (!items || items.length === 0) return null;
+export function History({
+  items = [],
+  onSelect,
+}: {
+  items?: TranslationHistoryItem[];
+  onSelect: (item: TranslationHistoryItem) => void;
+}) {
+  if (items.length === 0) return null;
 
   return (
     <section style={{ background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", padding: "var(--spacing-3)" }}>
@@ -27,12 +27,12 @@ export function History({ onSelect }: { onSelect: (item: TranslationDoc) => void
       <div style={{ display: "grid", gap: "var(--spacing-2)", maxHeight: 180, overflowY: "auto" }}>
         {items.map((item) => (
           <button
-            key={item._id}
+            key={item.id}
             type="button"
             onClick={() => onSelect(item)}
             style={{ textAlign: "left", border: "1px solid var(--color-border-stroke)", background: "var(--color-bg-input)", color: "var(--color-text-primary)", borderRadius: "var(--radius-md)", padding: "var(--spacing-2)", cursor: "pointer" }}
           >
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{item.sourceLang}{" -> "}{item.targetLang} • {ago(item.createdAt)}</div>
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{item.sourceLang === "auto" ? item.detectedSourceLang ?? "auto" : item.sourceLang}{" -> "}{item.targetLang} • {ago(item.createdAt)}</div>
             <div>{short(item.sourceText)}</div>
             <div style={{ color: "var(--color-text-secondary)" }}>{short(item.targetText)}</div>
           </button>

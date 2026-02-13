@@ -6,6 +6,10 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import "./styles/app.css";
 
+if (import.meta.hot) {
+  import.meta.hot.accept();
+}
+
 type RuntimeConfig = {
   convexUrl?: string;
   clerkPublishableKey?: string;
