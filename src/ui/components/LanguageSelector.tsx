@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import type { Language } from "../constants/languages.ts";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowDown01Icon, Search01Icon, Globe02Icon } from "@hugeicons/core-free-icons";
+import type { Language } from "../../translator/languages.ts";
 
 interface LanguageSelectorProps {
   value: string;
@@ -14,35 +16,33 @@ export function LanguageSelector({ value, onChange, languages, showAutoDetect }:
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
+        setSearch("");
       }
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") { setOpen(false); setSearch(""); }
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [open]);
 
-  // Focus search input when opened
   useEffect(() => {
     if (open) searchRef.current?.focus();
   }, [open]);
 
   const current = languages.find((l) => l.code === value);
-  const label = value === "" && showAutoDetect ? "🌐 Auto-detect" : current ? `${current.flag} ${current.name}` : value;
+  const isAutoDetect = value === "" && showAutoDetect;
 
   const filtered = languages.filter(
     (l) => l.name.toLowerCase().includes(search.toLowerCase()) || l.code.toLowerCase().includes(search.toLowerCase()),
@@ -57,26 +57,33 @@ export function LanguageSelector({ value, onChange, languages, showAutoDetect }:
   return (
     <div className="lang-selector" ref={containerRef}>
       <button className="lang-trigger" onClick={() => setOpen(!open)}>
-        <span>{label}</span>
-        <span className="lang-trigger-chevron">▾</span>
+        {isAutoDetect ? (
+          <HugeiconsIcon icon={Globe02Icon} size={18} />
+        ) : current ? (
+          <current.Flag size={20} aria-hidden />
+        ) : null}
+        <span className="lang-trigger-label">{isAutoDetect ? "Detect language" : current?.name ?? value}</span>
+        <HugeiconsIcon icon={ArrowDown01Icon} size={14} color="var(--color-icon)" />
       </button>
+
       {open && (
         <div className="lang-dropdown">
-          <input
-            ref={searchRef}
-            className="lang-search"
-            type="text"
-            placeholder="Search languages…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="lang-search-wrapper">
+            <HugeiconsIcon icon={Search01Icon} size={15} color="var(--color-text-muted)" />
+            <input
+              ref={searchRef}
+              className="lang-search"
+              type="text"
+              placeholder="Search…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <div className="lang-list">
             {showAutoDetect && (
-              <button
-                className={`lang-option${value === "" ? " lang-option-active" : ""}`}
-                onClick={() => select("")}
-              >
-                🌐 Auto-detect
+              <button className={`lang-option${value === "" ? " lang-option-active" : ""}`} onClick={() => select("")}>
+                <HugeiconsIcon icon={Globe02Icon} size={18} />
+                <span>Detect language</span>
               </button>
             )}
             {filtered.map((l) => (
@@ -85,7 +92,9 @@ export function LanguageSelector({ value, onChange, languages, showAutoDetect }:
                 className={`lang-option${l.code === value ? " lang-option-active" : ""}`}
                 onClick={() => select(l.code)}
               >
-                {l.flag} {l.name}
+                <l.Flag size={20} aria-hidden />
+                <span>{l.name}</span>
+                <span className="lang-option-code">{l.code}</span>
               </button>
             ))}
           </div>

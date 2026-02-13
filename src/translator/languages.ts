@@ -1,0 +1,86 @@
+import type { FC } from "react";
+import type { IconProps } from "nucleo-flags";
+import {
+  IconSaudiArabia, IconBulgaria, IconCzechia, IconDenmark, IconGermany,
+  IconGreece, IconUnitedKingdom, IconUnitedStates, IconSpain, IconEstonia,
+  IconFinland, IconFrance, IconHungary, IconIndonesia, IconItaly, IconJapan,
+  IconSouthKorea, IconLithuania, IconLatvia, IconNorway, IconNetherlands,
+  IconPoland, IconBrazil, IconPortugal, IconRomania, IconRussia, IconSlovakia,
+  IconSlovenia, IconSweden, IconTurkey, IconUkraine, IconChina, IconTaiwan,
+} from "nucleo-flags";
+
+export interface Language {
+  code: string;
+  name: string;
+  Flag: FC<IconProps>;
+}
+
+export const languages: Language[] = [
+  { code: "AR", name: "Arabic", Flag: IconSaudiArabia },
+  { code: "BG", name: "Bulgarian", Flag: IconBulgaria },
+  { code: "CS", name: "Czech", Flag: IconCzechia },
+  { code: "DA", name: "Danish", Flag: IconDenmark },
+  { code: "DE", name: "German", Flag: IconGermany },
+  { code: "EL", name: "Greek", Flag: IconGreece },
+  { code: "EN-GB", name: "English (UK)", Flag: IconUnitedKingdom },
+  { code: "EN-US", name: "English (US)", Flag: IconUnitedStates },
+  { code: "ES", name: "Spanish", Flag: IconSpain },
+  { code: "ES-419", name: "Spanish (LatAm)", Flag: IconSpain },
+  { code: "ET", name: "Estonian", Flag: IconEstonia },
+  { code: "FI", name: "Finnish", Flag: IconFinland },
+  { code: "FR", name: "French", Flag: IconFrance },
+  { code: "HU", name: "Hungarian", Flag: IconHungary },
+  { code: "ID", name: "Indonesian", Flag: IconIndonesia },
+  { code: "IT", name: "Italian", Flag: IconItaly },
+  { code: "JA", name: "Japanese", Flag: IconJapan },
+  { code: "KO", name: "Korean", Flag: IconSouthKorea },
+  { code: "LT", name: "Lithuanian", Flag: IconLithuania },
+  { code: "LV", name: "Latvian", Flag: IconLatvia },
+  { code: "NB", name: "Norwegian", Flag: IconNorway },
+  { code: "NL", name: "Dutch", Flag: IconNetherlands },
+  { code: "PL", name: "Polish", Flag: IconPoland },
+  { code: "PT-BR", name: "Portuguese (Brazil)", Flag: IconBrazil },
+  { code: "PT-PT", name: "Portuguese (Portugal)", Flag: IconPortugal },
+  { code: "RO", name: "Romanian", Flag: IconRomania },
+  { code: "RU", name: "Russian", Flag: IconRussia },
+  { code: "SK", name: "Slovak", Flag: IconSlovakia },
+  { code: "SL", name: "Slovenian", Flag: IconSlovenia },
+  { code: "SV", name: "Swedish", Flag: IconSweden },
+  { code: "TR", name: "Turkish", Flag: IconTurkey },
+  { code: "UK", name: "Ukrainian", Flag: IconUkraine },
+  { code: "ZH-HANS", name: "Chinese (Simplified)", Flag: IconChina },
+  { code: "ZH-HANT", name: "Chinese (Traditional)", Flag: IconTaiwan },
+];
+
+export const sourceLangs: Language[] = [
+  { code: "AR", name: "Arabic", Flag: IconSaudiArabia },
+  { code: "BG", name: "Bulgarian", Flag: IconBulgaria },
+  { code: "CS", name: "Czech", Flag: IconCzechia },
+  { code: "DA", name: "Danish", Flag: IconDenmark },
+  { code: "DE", name: "German", Flag: IconGermany },
+  { code: "EL", name: "Greek", Flag: IconGreece },
+  { code: "EN", name: "English", Flag: IconUnitedKingdom },
+  { code: "ES", name: "Spanish", Flag: IconSpain },
+  { code: "ET", name: "Estonian", Flag: IconEstonia },
+  { code: "FI", name: "Finnish", Flag: IconFinland },
+  { code: "FR", name: "French", Flag: IconFrance },
+  { code: "HU", name: "Hungarian", Flag: IconHungary },
+  { code: "ID", name: "Indonesian", Flag: IconIndonesia },
+  { code: "IT", name: "Italian", Flag: IconItaly },
+  { code: "JA", name: "Japanese", Flag: IconJapan },
+  { code: "KO", name: "Korean", Flag: IconSouthKorea },
+  { code: "LT", name: "Lithuanian", Flag: IconLithuania },
+  { code: "LV", name: "Latvian", Flag: IconLatvia },
+  { code: "NB", name: "Norwegian", Flag: IconNorway },
+  { code: "NL", name: "Dutch", Flag: IconNetherlands },
+  { code: "PL", name: "Polish", Flag: IconPoland },
+  { code: "PT", name: "Portuguese", Flag: IconPortugal },
+  { code: "RO", name: "Romanian", Flag: IconRomania },
+  { code: "RU", name: "Russian", Flag: IconRussia },
+  { code: "SK", name: "Slovak", Flag: IconSlovakia },
+  { code: "SL", name: "Slovenian", Flag: IconSlovenia },
+  { code: "SV", name: "Swedish", Flag: IconSweden },
+  { code: "TR", name: "Turkish", Flag: IconTurkey },
+  { code: "UK", name: "Ukrainian", Flag: IconUkraine },
+  { code: "ZH", name: "Chinese", Flag: IconChina },
+];

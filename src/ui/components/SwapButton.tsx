@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowDataTransferHorizontalIcon } from "@hugeicons/core-free-icons";
 
 interface SwapButtonProps {
   onSwap: () => void;
@@ -20,7 +22,7 @@ export function SwapButton({ onSwap, disabled }: SwapButtonProps) {
       disabled={disabled}
       aria-label="Swap languages"
     >
-      ⇄
+      <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} size={18} />
     </button>
   );
 }

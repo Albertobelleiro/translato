@@ -1,9 +1,11 @@
 import { useReducer, useEffect } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { LanguageSquareIcon } from "@hugeicons/core-free-icons";
 import { LanguageSelector } from "./components/LanguageSelector.tsx";
 import { SwapButton } from "./components/SwapButton.tsx";
 import { TranslatorPanel } from "./components/TranslatorPanel.tsx";
 import { useTranslate } from "./hooks/useTranslate.ts";
-import { languages, sourceLangs } from "./constants/languages.ts";
+import { languages, sourceLangs } from "../translator/languages.ts";
 
 interface State {
   sourceText: string;
@@ -60,12 +62,10 @@ export function App() {
     state.targetLang,
   );
 
-  // Sync hook results into reducer
   useEffect(() => { dispatch({ type: "SET_TARGET_TEXT", payload: translatedText }); }, [translatedText]);
   useEffect(() => { dispatch({ type: "SET_LOADING", payload: isLoading }); }, [isLoading]);
   useEffect(() => { dispatch({ type: "SET_ERROR", payload: error }); }, [error]);
 
-  // Cmd+Enter to force translate
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.metaKey && e.key === "Enter") {
@@ -81,41 +81,54 @@ export function App() {
 
   return (
     <div className="app">
-      <div className="app-title">Translato</div>
+      <header className="app-header">
+        <div className="app-brand">
+          <HugeiconsIcon icon={LanguageSquareIcon} size={22} color="var(--color-accent-500)" />
+          <span className="app-title">Translato</span>
+        </div>
+        <span className="app-subtitle">Powered by DeepL</span>
+      </header>
 
-      <div className="lang-bar">
-        <div className="lang-bar-side">
-          <LanguageSelector
-            value={state.sourceLang}
-            onChange={(code) => dispatch({ type: "SET_SOURCE_LANG", payload: code })}
-            languages={sourceLangs}
-            showAutoDetect
+      <main className="translator">
+        <div className="lang-bar">
+          <div className="lang-bar-side">
+            <LanguageSelector
+              value={state.sourceLang}
+              onChange={(code) => dispatch({ type: "SET_SOURCE_LANG", payload: code })}
+              languages={sourceLangs}
+              showAutoDetect
+            />
+          </div>
+          <SwapButton onSwap={() => dispatch({ type: "SWAP_LANGS" })} disabled={!canSwap} />
+          <div className="lang-bar-side">
+            <LanguageSelector
+              value={state.targetLang}
+              onChange={(code) => dispatch({ type: "SET_TARGET_LANG", payload: code })}
+              languages={languages}
+            />
+          </div>
+        </div>
+
+        <div className="panels">
+          <TranslatorPanel
+            mode="source"
+            text={state.sourceText}
+            onTextChange={(t) => dispatch({ type: "SET_SOURCE_TEXT", payload: t })}
+            onClear={() => dispatch({ type: "CLEAR" })}
+          />
+          <TranslatorPanel
+            mode="target"
+            text={state.targetText}
+            isLoading={state.isLoading}
+            error={state.error}
           />
         </div>
-        <SwapButton onSwap={() => dispatch({ type: "SWAP_LANGS" })} disabled={!canSwap} />
-        <div className="lang-bar-side">
-          <LanguageSelector
-            value={state.targetLang}
-            onChange={(code) => dispatch({ type: "SET_TARGET_LANG", payload: code })}
-            languages={languages}
-          />
-        </div>
-      </div>
+      </main>
 
-      <div className="panels">
-        <TranslatorPanel
-          mode="source"
-          text={state.sourceText}
-          onTextChange={(t) => dispatch({ type: "SET_SOURCE_TEXT", payload: t })}
-          onClear={() => dispatch({ type: "CLEAR" })}
-        />
-        <TranslatorPanel
-          mode="target"
-          text={state.targetText}
-          isLoading={state.isLoading}
-          error={state.error}
-        />
-      </div>
+      <footer className="app-footer">
+        <kbd className="kbd">⌘</kbd><kbd className="kbd">↵</kbd>
+        <span className="app-footer-text">to translate</span>
+      </footer>
     </div>
   );
 }

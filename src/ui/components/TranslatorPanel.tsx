@@ -1,4 +1,5 @@
-import type { Language } from "../constants/languages.ts";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { TextArea } from "./TextArea.tsx";
 import { CharCount } from "./CharCount.tsx";
 import { CopyButton } from "./CopyButton.tsx";
@@ -16,12 +17,12 @@ export function TranslatorPanel({ mode, text, onTextChange, isLoading, error, on
   const isSource = mode === "source";
 
   return (
-    <div className={`panel${isLoading && !isSource ? " panel-loading" : ""}`}>
+    <div className={`panel${!isSource && isLoading ? " panel-loading" : ""}`}>
       <TextArea
         value={text}
         onChange={isSource ? onTextChange : undefined}
         readOnly={!isSource}
-        placeholder={isSource ? "Type to translate…" : "Translation"}
+        placeholder={isSource ? "Type or paste text…" : "Translation"}
       />
       {error && !isSource && <div className="error-text">{error}</div>}
       <div className="panel-footer">
@@ -29,7 +30,9 @@ export function TranslatorPanel({ mode, text, onTextChange, isLoading, error, on
           <>
             <CharCount count={text.length} />
             {text.length > 0 && (
-              <button className="clear-btn" onClick={onClear} aria-label="Clear text">✕</button>
+              <button className="icon-btn" onClick={onClear} aria-label="Clear text">
+                <HugeiconsIcon icon={Cancel01Icon} size={16} />
+              </button>
             )}
           </>
         ) : (
