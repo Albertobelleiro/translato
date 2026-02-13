@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import { api } from "../../convex/_generated/api";
 
 import { App } from "./App.tsx";
+import { initTheme } from "./hooks/useTheme.ts";
 import "./styles/app.css";
 
 if (import.meta.hot) {
@@ -108,6 +109,9 @@ function InternalAccessGate() {
 const root = document.getElementById("root");
 async function boot(): Promise<void> {
   if (!root) return;
+
+  // Apply saved theme before rendering to prevent flash
+  initTheme();
 
   const { convexUrl, clerkPublishableKey } = await loadRuntimeConfig();
   const convex = new ConvexReactClient(convexUrl);

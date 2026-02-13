@@ -1,14 +1,16 @@
-import { UserButton } from "@clerk/clerk-react";
 import { Globe02Icon, LanguageSquareIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { api } from "../../convex/_generated/api";
 import { languages, sourceLangs } from "../translator/languages.ts";
-import { History } from "./components/History.tsx";
+import { Avatar } from "./components/Avatar.tsx";
+import { HistoryTabs } from "./components/History.tsx";
 import { LanguageSelector } from "./components/LanguageSelector.tsx";
+import { ShortcutHint } from "./components/ShortcutHint.tsx";
 import { SwapButton } from "./components/SwapButton.tsx";
+import { ThemeToggle } from "./components/ThemeToggle.tsx";
 import { TranslatorPanel } from "./components/TranslatorPanel.tsx";
 import {
   appendTranslationSnapshot,
@@ -71,7 +73,16 @@ function reducer(state: State, action: Action): State {
     case "SET_TARGET_LANG": return { ...state, targetLang: action.payload };
     case "SET_LOADING": return { ...state, isLoading: action.payload };
     case "SET_ERROR": return { ...state, error: action.payload };
-    case "SWAP_LANGS": return state;
+    case "SWAP_LANGS": {
+      const newTarget = state.targetLang === "ES" ? "EN-US" : "ES";
+      return {
+        ...state,
+        sourceText: state.targetText,
+        targetText: state.sourceText,
+        sourceLang: "",
+        targetLang: newTarget,
+      };
+    }
     case "CLEAR": return { ...state, sourceText: "", targetText: "", error: null };
   }
 }
@@ -88,6 +99,7 @@ const initialState: State = {
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [historyItems, setHistoryItems] = useState(loadTranslationHistory);
+  const [shortcutHint, setShortcutHint] = useState<string | null>(null);
   const didHydratePreferences = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestSnapshotRef = useRef<TranslationSnapshot | null>(null);
@@ -135,16 +147,35 @@ export function App() {
     dispatch({ type: "SET_TARGET_LANG", payload: detectedTarget });
   }, [detectedLang, state.sourceLang, state.sourceText, state.targetLang]);
 
+  const showHint = useCallback((msg: string) => {
+    setShortcutHint(null);
+    // Force new render cycle so ShortcutHint remounts
+    requestAnimationFrame(() => setShortcutHint(msg));
+  }, []);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.metaKey && e.key === "Enter") {
         e.preventDefault();
         forceTranslate();
+        showHint("Translating...");
+      }
+      if (e.metaKey && e.shiftKey && e.key.toUpperCase() === "C") {
+        e.preventDefault();
+        if (state.targetText) {
+          navigator.clipboard.writeText(state.targetText);
+          showHint("Copied to clipboard");
+        }
+      }
+      if (e.metaKey && e.shiftKey && e.key.toUpperCase() === "X") {
+        e.preventDefault();
+        dispatch({ type: "CLEAR" });
+        showHint("Cleared");
       }
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [forceTranslate]);
+  }, [forceTranslate, showHint, state.targetText]);
 
   useEffect(() => {
     if (!state.sourceText.trim() || !state.targetText.trim()) {
@@ -204,16 +235,8 @@ export function App() {
         </div>
         <div className="app-header-actions">
           <span className="app-subtitle">Powered by DeepL</span>
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: {
-                  width: 28,
-                  height: 28,
-                },
-              },
-            }}
-          />
+          <ThemeToggle />
+          <Avatar />
         </div>
       </header>
 
@@ -231,7 +254,7 @@ export function App() {
               </span>
             </button>
           </div>
-          <SwapButton onSwap={() => dispatch({ type: "SWAP_LANGS" })} disabled />
+          <SwapButton onSwap={() => dispatch({ type: "SWAP_LANGS" })} />
           <div className="lang-bar-side">
             <LanguageSelector
               value={state.targetLang}
@@ -256,7 +279,7 @@ export function App() {
           />
         </div>
 
-        <History
+        <HistoryTabs
           items={historyItems}
           onSelect={(item) => {
             dispatch({ type: "SET_SOURCE_TEXT", payload: item.sourceText });
@@ -271,9 +294,23 @@ export function App() {
       </main>
 
       <footer className="app-footer">
-        <kbd className="kbd">⌘</kbd><kbd className="kbd">↵</kbd>
-        <span className="app-footer-text">to translate</span>
+        <span className="app-footer-group">
+          <kbd className="kbd">⌘</kbd><kbd className="kbd">↵</kbd>
+          <span className="app-footer-text">translate</span>
+        </span>
+        <span className="app-footer-sep">·</span>
+        <span className="app-footer-group">
+          <kbd className="kbd">⌘</kbd><kbd className="kbd">⇧</kbd><kbd className="kbd">C</kbd>
+          <span className="app-footer-text">copy</span>
+        </span>
+        <span className="app-footer-sep">·</span>
+        <span className="app-footer-group">
+          <kbd className="kbd">⌘</kbd><kbd className="kbd">⇧</kbd><kbd className="kbd">X</kbd>
+          <span className="app-footer-text">clear</span>
+        </span>
       </footer>
+
+      <ShortcutHint message={shortcutHint} />
     </div>
   );
 }
