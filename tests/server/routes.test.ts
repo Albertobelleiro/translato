@@ -18,6 +18,7 @@ beforeEach(() => {
   delete process.env.CONVEX_URL;
   delete process.env.CLERK_PUBLISHABLE_KEY;
   delete process.env.VITE_CLERK_PUBLISHABLE_KEY;
+  process.env.CORS_ALLOWED_ORIGINS = "https://app.example.com,http://localhost:5173";
   spyOn(Bun, "file").mockReturnValue({ text: async () => "" } as never);
   mock.module("../../src/translator/translate.ts", () => ({
     getLanguages: getLanguagesMock,
@@ -30,9 +31,13 @@ beforeEach(() => {
 describe("handleOptions", () => {
   test("returns 204 with CORS headers", async () => {
     const { handleOptions } = await loadRoutes();
-    const res = handleOptions();
+    const req = new Request("http://localhost/api/translate", {
+      method: "OPTIONS",
+      headers: { Origin: "https://app.example.com" },
+    });
+    const res = handleOptions(req);
     expect(res.status).toBe(204);
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://app.example.com");
     expect(res.headers.get("Access-Control-Allow-Methods")).toBe("GET, POST, OPTIONS");
     expect(res.headers.get("Access-Control-Allow-Headers")).toBe("Content-Type");
   });
@@ -41,8 +46,11 @@ describe("handleOptions", () => {
 describe("CORS headers", () => {
   test("JSON responses include CORS headers", async () => {
     const { handleUsage } = await loadRoutes();
-    const res = await handleUsage();
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    const req = new Request("http://localhost/api/usage", {
+      headers: { Origin: "https://app.example.com" },
+    });
+    const res = await handleUsage(req);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://app.example.com");
   });
 });
 
@@ -188,5 +196,18 @@ describe("handleConfig", () => {
     const res = await handleConfig();
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "Missing CONVEX_URL" });
+  });
+
+  test("strips quotes from .env.local values", async () => {
+    spyOn(Bun, "file").mockReturnValue({
+      text: async () => "CONVEX_URL=\"https://example.convex.cloud\"\nCLERK_PUBLISHABLE_KEY='pk_test_example'\n",
+    } as never);
+    const { handleConfig } = await loadRoutes();
+    const res = await handleConfig();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      convexUrl: "https://example.convex.cloud",
+      clerkPublishableKey: "pk_test_example",
+    });
   });
 });

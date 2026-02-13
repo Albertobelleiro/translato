@@ -52,7 +52,7 @@ function validateConvexUrl(value: string): string {
   }
 
   if (parsed.protocol !== "https:") {
-    throw new Error("CONVEX URL must use https");
+    throw new Error("VITE_CONVEX_URL must use https");
   }
 
   return value;

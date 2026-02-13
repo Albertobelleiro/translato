@@ -8,8 +8,7 @@ export const record = mutation({
     characterCount: v.number(),
   },
   handler: async (ctx, args) => {
-    const user = await getUser(ctx);
-    if (!user) return null;
+    const user = await requireUser(ctx);
 
     const date = todayIso();
     const existing = await ctx.db

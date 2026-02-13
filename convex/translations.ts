@@ -27,7 +27,8 @@ export const list = query({
     const user = await getUser(ctx);
     if (!user) return [];
 
-    const limit = Math.min(args.limit ?? 50, 200);
+    const rawLimit = args.limit ?? 50;
+    const limit = Math.max(0, Math.min(Math.floor(rawLimit), 200));
     return await ctx.db
       .query("translations")
       .withIndex("by_userId", (q) => q.eq("userId", user.id))

@@ -110,6 +110,7 @@ export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [historyItems, setHistoryItems] = useState(loadTranslationHistory);
   const [shortcutHint, setShortcutHint] = useState<string | null>(null);
+  const [shortcutHintKey, setShortcutHintKey] = useState(0);
   const didHydratePreferences = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestSnapshotRef = useRef<TranslationSnapshot | null>(null);
@@ -165,9 +166,8 @@ export function App() {
   }, [detectedLang, state.sourceLang, state.sourceText, state.targetLang]);
 
   const showHint = useCallback((msg: string) => {
-    setShortcutHint(null);
-    // Force new render cycle so ShortcutHint remounts
-    requestAnimationFrame(() => setShortcutHint(msg));
+    setShortcutHint(msg);
+    setShortcutHintKey((prev) => prev + 1);
   }, []);
 
   useEffect(() => {
@@ -327,7 +327,7 @@ export function App() {
         </span>
       </footer>
 
-      <ShortcutHint message={shortcutHint} />
+      <ShortcutHint message={shortcutHint} hintKey={shortcutHintKey} />
     </div>
   );
 }

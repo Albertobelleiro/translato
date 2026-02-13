@@ -6,6 +6,7 @@ import {
   handleOptions,
   handleTranslate,
   handleUsage,
+  withCors,
 } from "./routes.ts";
 
 // Local Bun server entrypoint kept for development workflows.
@@ -45,6 +46,21 @@ try {
       "/favicon.ico": {
         GET: () => new Response(null, { status: 204 }),
       },
+    },
+    fetch: (req) => {
+      if (req.method === "OPTIONS") {
+        return handleOptions(req);
+      }
+
+      const { pathname } = new URL(req.url);
+      if (pathname.startsWith("/api/")) {
+        return withCors(req, new Response(JSON.stringify({ error: "Method not allowed" }), {
+          status: 405,
+          headers: { "Content-Type": "application/json" },
+        }));
+      }
+
+      return withCors(req, new Response("Not Found", { status: 404 }));
     },
     development: { hmr: true, console: true },
   });

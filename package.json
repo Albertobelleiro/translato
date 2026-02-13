@@ -17,7 +17,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "build:check": "bun run typecheck && vite build",
-    "audit:bundle-secrets": "if rg -n \"(DEEPL_API_KEY|CLERK_SECRET_KEY|DeepL-Auth-Key|sk_live_)\" dist --glob '!**/*.map'; then echo \"Potential secret found in dist bundle\"; exit 1; else echo \"No obvious secrets detected in dist bundle\"; fi",
+    "audit:bundle-secrets": "if command -v rg >/dev/null 2>&1; then if rg -n \"(DEEPL_API_KEY|CLERK_SECRET_KEY|DeepL-Auth-Key|sk_live_)\" dist --glob '!**/*.map'; then echo \"Potential secret found in dist bundle\"; exit 1; else echo \"No obvious secrets detected in dist bundle\"; fi; else if grep -RInE \"(DEEPL_API_KEY|CLERK_SECRET_KEY|DeepL-Auth-Key|sk_live_)\" dist --exclude='*.map'; then echo \"Potential secret found in dist bundle\"; exit 1; else echo \"No obvious secrets detected in dist bundle\"; fi; fi",
     "typecheck": "bun run tsc --noEmit",
     "test": "bun test tests/convex/*.test.ts tests/server/*.test.ts tests/translator/*.test.ts tests/ui/*.test.ts",
     "test:coverage": "bun test --coverage tests/convex/*.test.ts tests/server/*.test.ts tests/translator/*.test.ts tests/ui/*.test.ts",

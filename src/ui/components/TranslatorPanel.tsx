@@ -1,5 +1,6 @@
 import { Cancel01Icon, Mic01Icon, VolumeHighIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { MAX_TEXT_BYTES } from "../../shared/constants.ts";
 
 import { CharCount } from "./CharCount.tsx";
 import { CopyButton } from "./CopyButton.tsx";
@@ -14,8 +15,11 @@ interface TranslatorPanelProps {
   onClear?: () => void;
 }
 
+const textEncoder = new TextEncoder();
+
 export function TranslatorPanel({ mode, text, onTextChange, isLoading, error, onClear }: TranslatorPanelProps) {
   const isSource = mode === "source";
+  const sourceByteCount = isSource ? textEncoder.encode(text).length : 0;
 
   return (
     <div className={`panel${!isSource && isLoading ? " panel-loading" : ""}`}>
@@ -38,7 +42,7 @@ export function TranslatorPanel({ mode, text, onTextChange, isLoading, error, on
               </button>
             </div>
             <div className="panel-footer-meta">
-              <CharCount count={text.length} />
+              <CharCount count={sourceByteCount} max={MAX_TEXT_BYTES} />
               {text.length > 0 && (
                 <button className="icon-btn" onClick={onClear} aria-label="Clear text">
                   <HugeiconsIcon icon={Cancel01Icon} size={16} />

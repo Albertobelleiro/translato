@@ -11,25 +11,62 @@ import type { TranslateRequest } from "../translator/types.ts";
 let convexUrlCache: string | null | undefined;
 let clerkPublishableKeyCache: string | null | undefined;
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
+const configuredAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
+const allowedOrigins = new Set(
+  configuredAllowedOrigins.length > 0 ? configuredAllowedOrigins : DEFAULT_ALLOWED_ORIGINS,
+);
+const defaultAllowedOrigin = configuredAllowedOrigins[0] ?? DEFAULT_ALLOWED_ORIGINS[0] ?? "http://localhost:5173";
 
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+function resolveAllowedOrigin(req?: Request): string {
+  const requestOrigin = req?.headers.get("Origin")?.trim();
+  if (requestOrigin && allowedOrigins.has(requestOrigin)) {
+    return requestOrigin;
+  }
+  return defaultAllowedOrigin;
+}
+
+function corsHeaders(req?: Request): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": resolveAllowedOrigin(req),
+    "Vary": "Origin",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
+
+export function withCors(req: Request | undefined, response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(corsHeaders(req))) {
+    headers.set(name, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
 
-function errorResponse(message: string, status: number): Response {
-  return jsonResponse({ error: message }, status);
+function jsonResponse(req: Request | undefined, data: unknown, status = 200): Response {
+  return withCors(req, new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  }));
 }
 
-export function handleOptions(): Response {
-  return new Response(null, { status: 204, headers: CORS_HEADERS });
+function errorResponse(req: Request | undefined, message: string, status: number): Response {
+  return jsonResponse(req, { error: message }, status);
+}
+
+export function handleOptions(req?: Request): Response {
+  return new Response(null, { status: 204, headers: corsHeaders(req) });
+}
+
+function stripEnvValue(value: string): string {
+  return value.trim().replace(/^["']|["']$/g, "");
 }
 
 export async function handleTranslate(req: Request): Promise<Response> {
@@ -39,27 +76,27 @@ export async function handleTranslate(req: Request): Promise<Response> {
       body = (await req.json()) as Partial<TranslateRequest>;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        return errorResponse("Malformed JSON body", 400);
+        return errorResponse(req, "Malformed JSON body", 400);
       }
       throw error;
     }
 
     if (!body.text || typeof body.text !== "string" || body.text.trim() === "") {
-      return errorResponse("text is required and must be a non-empty string", 400);
+      return errorResponse(req, "text is required and must be a non-empty string", 400);
     }
     if (
       !body.target_lang ||
       typeof body.target_lang !== "string" ||
       body.target_lang.trim() === ""
     ) {
-      return errorResponse("target_lang is required and must be a non-empty string", 400);
+      return errorResponse(req, "target_lang is required and must be a non-empty string", 400);
     }
     if (new TextEncoder().encode(body.text).byteLength > MAX_TEXT_BYTES) {
-      return errorResponse("text exceeds maximum length of 128,000 bytes", 400);
+      return errorResponse(req, "text exceeds maximum length of 128,000 bytes", 400);
     }
 
     const result = await translate(body.text, body.target_lang, body.source_lang);
-    return jsonResponse(result);
+    return jsonResponse(req, result);
   } catch (error) {
     if (error instanceof DeepLError) {
       const mapped =
@@ -68,19 +105,19 @@ export async function handleTranslate(req: Request): Promise<Response> {
           : error.status === 456
             ? { status: 429, message: "Quota exceeded" }
             : { status: error.status, message: error.message };
-      return errorResponse(mapped.message, mapped.status);
+      return errorResponse(req, mapped.message, mapped.status);
     }
-    return errorResponse("Internal server error", 500);
+    return errorResponse(req, "Internal server error", 500);
   }
 }
 
-export async function handleLanguages(): Promise<Response> {
+export async function handleLanguages(req?: Request): Promise<Response> {
   try {
     const [source, target] = await Promise.all([
       getLanguages("source"),
       getLanguages("target"),
     ]);
-    return jsonResponse({
+    return jsonResponse(req, {
       source: source.map((l) => ({ code: l.language, name: l.name })),
       target: target.map((l) => ({ code: l.language, name: l.name })),
     });
@@ -88,18 +125,18 @@ export async function handleLanguages(): Promise<Response> {
     if (error instanceof DeepLError) {
       // Fallback: return hardcoded list
       const fallback = getFallbackLanguages();
-      return jsonResponse({ source: fallback, target: fallback });
+      return jsonResponse(req, { source: fallback, target: fallback });
     }
-    return errorResponse("Internal server error", 500);
+    return errorResponse(req, "Internal server error", 500);
   }
 }
 
-export async function handleUsage(): Promise<Response> {
+export async function handleUsage(req?: Request): Promise<Response> {
   try {
-    return jsonResponse(await getUsage());
+    return jsonResponse(req, await getUsage());
   } catch (error) {
-    if (error instanceof DeepLError) return errorResponse(error.message, error.status);
-    return errorResponse("Internal server error", 500);
+    if (error instanceof DeepLError) return errorResponse(req, error.message, error.status);
+    return errorResponse(req, "Internal server error", 500);
   }
 }
 
@@ -113,7 +150,7 @@ async function resolveConvexUrl(): Promise<string | null> {
   try {
     const envLocal = await Bun.file(".env.local").text();
     const match = envLocal.match(/^CONVEX_URL=(.+)$/m);
-    convexUrlCache = match?.[1]?.trim() ?? null;
+    convexUrlCache = match?.[1] ? stripEnvValue(match[1]) : null;
     return convexUrlCache;
   } catch {
     convexUrlCache = null;
@@ -138,12 +175,12 @@ async function resolveClerkPublishableKey(): Promise<string | null> {
     const envLocal = await Bun.file(".env.local").text();
     const clerkMatch = envLocal.match(/^CLERK_PUBLISHABLE_KEY=(.+)$/m);
     if (clerkMatch?.[1]) {
-      clerkPublishableKeyCache = clerkMatch[1].trim();
+      clerkPublishableKeyCache = stripEnvValue(clerkMatch[1]);
       return clerkPublishableKeyCache;
     }
 
     const viteMatch = envLocal.match(/^VITE_CLERK_PUBLISHABLE_KEY=(.+)$/m);
-    clerkPublishableKeyCache = viteMatch?.[1]?.trim() ?? null;
+    clerkPublishableKeyCache = viteMatch?.[1] ? stripEnvValue(viteMatch[1]) : null;
     return clerkPublishableKeyCache;
   } catch {
     clerkPublishableKeyCache = null;
@@ -151,13 +188,13 @@ async function resolveClerkPublishableKey(): Promise<string | null> {
   }
 }
 
-export async function handleConfig(): Promise<Response> {
+export async function handleConfig(req?: Request): Promise<Response> {
   const [convexUrl, clerkPublishableKey] = await Promise.all([
     resolveConvexUrl(),
     resolveClerkPublishableKey(),
   ]);
-  if (!convexUrl) return errorResponse("Missing CONVEX_URL", 500);
-  if (!clerkPublishableKey) return errorResponse("Missing CLERK_PUBLISHABLE_KEY", 500);
+  if (!convexUrl) return errorResponse(req, "Missing CONVEX_URL", 500);
+  if (!clerkPublishableKey) return errorResponse(req, "Missing CLERK_PUBLISHABLE_KEY", 500);
 
-  return jsonResponse({ convexUrl, clerkPublishableKey });
+  return jsonResponse(req, { convexUrl, clerkPublishableKey });
 }

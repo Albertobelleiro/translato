@@ -1,6 +1,6 @@
 import { CheckmarkCircle02Icon, Copy01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CopyButtonProps {
   text: string;
@@ -11,19 +11,32 @@ export function CopyButton({ text }: CopyButtonProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
 
-    // Trigger bounce animation
-    if (btnRef.current) {
-      btnRef.current.classList.remove("copy-btn-bounce");
-      void btnRef.current.offsetWidth; // force reflow
-      btnRef.current.classList.add("copy-btn-bounce");
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+
+      // Trigger bounce animation
+      if (btnRef.current) {
+        btnRef.current.classList.remove("copy-btn-bounce");
+        void btnRef.current.offsetWidth; // force reflow
+        btnRef.current.classList.add("copy-btn-bounce");
+      }
+
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1500);
+    } catch (error) {
+      console.error("Failed to copy text to clipboard", error);
     }
-
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setCopied(false), 1500);
   };
 
   return (

@@ -99,9 +99,15 @@ export const translate = action({
     const data = await response.json() as {
       translations: Array<{ detected_source_language: string; text: string }>;
     };
+    if (!Array.isArray(data.translations) || data.translations.length === 0) {
+      throw new Error("Translation service returned an empty result");
+    }
     const first = data.translations[0];
-    const translatedText = first?.text ?? "";
-    const detectedSourceLang = first?.detected_source_language ?? "";
+    if (!first?.text || !first?.detected_source_language) {
+      throw new Error("Translation service returned an empty result");
+    }
+    const translatedText = first.text;
+    const detectedSourceLang = first.detected_source_language;
 
     await ctx.runMutation(api.stats.record, {
       characterCount: args.text.length,

@@ -2,7 +2,7 @@ import { ArrowDown01Icon, Globe02Icon, Search01Icon } from "@hugeicons/core-free
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useRef, useState } from "react";
 
-import type { Language } from "../../translator/languages.ts";
+import type { Language } from "../../translator/types.ts";
 
 interface LanguageSelectorProps {
   value: string;

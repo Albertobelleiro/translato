@@ -1,7 +1,7 @@
 import { animate } from "animejs";
 import { useCallback, useEffect, useRef } from "react";
 
-type AnimeParams = Parameters<typeof animate>[1] & { targets?: unknown };
+type AnimeParams = Parameters<typeof animate>[1];
 
 const prefersReduced =
   typeof window !== "undefined"

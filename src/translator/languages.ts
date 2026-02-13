@@ -7,14 +7,7 @@ import {
   IconSouthKorea, IconSpain, IconSweden, IconTaiwan, IconTurkey,
   IconUkraine, IconUnitedKingdom, IconUnitedStates,
 } from "nucleo-flags";
-import type { IconProps } from "nucleo-flags";
-import type { FC } from "react";
-
-export interface Language {
-  code: string;
-  name: string;
-  Flag: FC<IconProps>;
-}
+import type { Language } from "./types.ts";
 
 export const languages: Language[] = [
   { code: "AR", name: "Arabic", Flag: IconSaudiArabia },

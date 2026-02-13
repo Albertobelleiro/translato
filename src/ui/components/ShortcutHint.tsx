@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 
 interface ShortcutHintProps {
   message: string | null;
+  hintKey?: number | string;
 }
 
-export function ShortcutHint({ message }: ShortcutHintProps) {
+export function ShortcutHint({ message, hintKey }: ShortcutHintProps) {
   const [visible, setVisible] = useState(false);
   const [text, setText] = useState("");
 
@@ -14,7 +15,7 @@ export function ShortcutHint({ message }: ShortcutHintProps) {
     setVisible(true);
     const timer = setTimeout(() => setVisible(false), 1400);
     return () => clearTimeout(timer);
-  }, [message]);
+  }, [message, hintKey]);
 
   if (!visible) return null;
 

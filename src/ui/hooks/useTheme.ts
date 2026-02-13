@@ -22,7 +22,10 @@ function applyTheme(theme: Theme) {
   document.documentElement.classList.remove("dark", "light");
   document.documentElement.classList.add(theme);
   const metaColor = theme === "light" ? "#F5F6F8" : "#1A1D21";
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", metaColor);
+  const metaTags = document.querySelectorAll('meta[name="theme-color"]');
+  for (const tag of metaTags) {
+    tag.setAttribute("content", metaColor);
+  }
 }
 
 function setTheme(theme: Theme) {

@@ -17,13 +17,15 @@ function resolvePublicEnv(
 }
 
 function assertConvexUrl(value: string): void {
+  let parsed: URL;
   try {
-    const parsed = new URL(value);
-    if (parsed.protocol !== "https:") {
-      throw new Error("VITE_CONVEX_URL must use https");
-    }
+    parsed = new URL(value);
   } catch {
     throw new Error("VITE_CONVEX_URL must be a valid https URL");
+  }
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("VITE_CONVEX_URL must use https");
   }
 }
 

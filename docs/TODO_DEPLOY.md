@@ -169,7 +169,7 @@ Depends on: Phase 8
 What can go wrong:
 - DNS propagation delay interpreted as application outage.
 - Clerk domain mismatch after cutover.
-- Mixed content due partial HTTPS configuration.
+- Mixed content due to partial HTTPS configuration.
 
 ## Phase 10: Post-Deploy Verification & Monitoring (Effort: M)
 

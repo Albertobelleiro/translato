@@ -4,12 +4,21 @@ import {
   type DeepLTranslateBody,
   type DeepLTranslateResult,
   type DeepLUsage,
-  type Language,
+  type PlainLanguage,
   type TranslateResponse,
 } from "./types.ts";
 
 const BASE_URL = "https://api-free.deepl.com/v2";
-const authToken = `DeepL-Auth-Key ${process.env.DEEPL_API_KEY}`;
+
+function getDeepLAuthToken(): string {
+  const key = process.env.DEEPL_API_KEY?.trim();
+  if (!key) {
+    throw new Error("DEEPL_API_KEY is not configured");
+  }
+  return `DeepL-Auth-Key ${key}`;
+}
+
+const authToken = getDeepLAuthToken();
 const authGetHeader = { Authorization: authToken };
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -22,7 +31,7 @@ interface CacheEntry {
 const languageCache: Partial<Record<"source" | "target", CacheEntry>> = {};
 
 /** Hardcoded fallback languages (plain {code, name}) for when DeepL is unreachable */
-const FALLBACK_LANGUAGES: Language[] = [
+const FALLBACK_LANGUAGES: PlainLanguage[] = [
   { code: "AR", name: "Arabic" },
   { code: "BG", name: "Bulgarian" },
   { code: "CS", name: "Czech" },
@@ -90,7 +99,7 @@ export async function getLanguages(
   }
 }
 
-export function getFallbackLanguages(): Language[] {
+export function getFallbackLanguages(): PlainLanguage[] {
   return FALLBACK_LANGUAGES;
 }
 

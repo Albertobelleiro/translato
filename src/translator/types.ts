@@ -1,3 +1,6 @@
+import type { IconProps } from "nucleo-flags";
+import type { FC } from "react";
+
 export interface DeepLLanguage {
   language: string;
   name: string;
@@ -44,6 +47,12 @@ export interface DeepLTranslateResult {
 }
 
 export interface Language {
+  code: string;
+  name: string;
+  Flag: FC<IconProps>;
+}
+
+export interface PlainLanguage {
   code: string;
   name: string;
 }
