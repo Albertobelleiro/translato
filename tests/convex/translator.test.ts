@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { makeFunctionReference } from "convex/server";
 import { mapDeepLError } from "../../convex/lib/errors";
 import schema from "../../convex/schema";
+import { __resetTranslationRateLimitBucketsForTests } from "../../convex/translator.ts";
 
 const translateActionRef = makeFunctionReference<"action">("translator:translate");
 const getTodayQueryRef = makeFunctionReference<"query">("stats:getToday");
@@ -17,8 +18,23 @@ function createTestConvex() {
   return convexTest(schema, convexModules);
 }
 
+async function expectActionResolves<T>(
+  action: Promise<T>,
+  expected: Awaited<T>,
+  context: string,
+): Promise<void> {
+  try {
+    const result = await action;
+    expect(result).toEqual(expected);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${context} unexpectedly rejected: ${message}`);
+  }
+}
+
 beforeEach(() => {
   mock.restore();
+  __resetTranslationRateLimitBucketsForTests();
   process.env.DEEPL_API_KEY = "test-key";
   process.env.INTERNAL_ALLOWED_EMAILS = "me@example.com";
   delete process.env.INTERNAL_ALLOWED_DOMAINS;
@@ -59,8 +75,9 @@ describe("translate action auth enforcement", () => {
   });
 
   test("calls DeepL and records usage for allowed users", async () => {
+    const userId = `user|allowed-${crypto.randomUUID()}`;
     const t = createTestConvex().withIdentity({
-      tokenIdentifier: "user|allowed",
+      tokenIdentifier: userId,
       email: "me@example.com",
     });
     const fetchSpy = spyOn(globalThis, "fetch");
@@ -68,23 +85,28 @@ describe("translate action auth enforcement", () => {
       translations: [{ text: "Hola", detected_source_language: "EN" }],
     }), { status: 200 }));
 
-    await expect(t.action(translateActionRef, {
-      text: "Hello",
-      targetLang: "ES",
-    })).resolves.toEqual({ translatedText: "Hola", detectedSourceLang: "EN" });
+    await expectActionResolves(
+      t.action(translateActionRef, {
+        text: "Hello",
+        targetLang: "ES",
+      }),
+      { translatedText: "Hola", detectedSourceLang: "EN" },
+      "translate action for allowed user",
+    );
 
     const usage = await t.query(getTodayQueryRef);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(usage).toMatchObject({
-      userId: "user|allowed",
+      userId,
       translationCount: 1,
       characterCount: 5,
     });
   });
 
   test("throttles burst requests per user", async () => {
+    const userId = `user|throttle-${crypto.randomUUID()}`;
     const t = createTestConvex().withIdentity({
-      tokenIdentifier: "user|throttle",
+      tokenIdentifier: userId,
       email: "me@example.com",
     });
     const fetchSpy = spyOn(globalThis, "fetch");
@@ -93,10 +115,11 @@ describe("translate action auth enforcement", () => {
     }), { status: 200 })) as never);
 
     for (let i = 0; i < 20; i += 1) {
-      await expect(t.action(translateActionRef, { text: `Hello ${i}`, targetLang: "ES" })).resolves.toEqual({
-        translatedText: "Hola",
-        detectedSourceLang: "EN",
-      });
+      await expectActionResolves(
+        t.action(translateActionRef, { text: `Hello ${i}`, targetLang: "ES" }),
+        { translatedText: "Hola", detectedSourceLang: "EN" },
+        `throttle warm-up request ${i}`,
+      );
     }
 
     const usage = await t.query(getTodayQueryRef);
@@ -104,7 +127,7 @@ describe("translate action auth enforcement", () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(20);
     expect(usage).toMatchObject({
-      userId: "user|throttle",
+      userId,
       translationCount: 20,
       characterCount: 150,
     });

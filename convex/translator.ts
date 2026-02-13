@@ -17,6 +17,10 @@ type RateLimitBucket = {
 // Best-effort burst protection for translation calls, only effective within a single warm isolate.
 const translationRateLimitBuckets = new Map<string, RateLimitBucket>();
 
+export function __resetTranslationRateLimitBucketsForTests(): void {
+  translationRateLimitBuckets.clear();
+}
+
 function consumeTranslationToken(userId: string): number | null {
   const now = Date.now();
 
