@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 import { action } from "./_generated/server";
-import { getUser } from "./helpers";
+import { requireUser } from "./helpers";
 
 const DEEPL_URL = "https://api-free.deepl.com/v2/translate";
 
@@ -66,22 +66,20 @@ export const translate = action({
     const translatedText = first?.text ?? "";
     const detectedSourceLang = first?.detected_source_language ?? "";
 
-    const user = await getUser(ctx);
+    await requireUser(ctx);
 
-    if (user) {
-      await ctx.runMutation(api.translations.save, {
-        sourceText: args.text,
-        targetText: translatedText,
-        sourceLang: args.sourceLang || "auto",
-        targetLang: args.targetLang,
-        detectedSourceLang,
-        characterCount: args.text.length,
-      });
+    await ctx.runMutation(api.translations.save, {
+      sourceText: args.text,
+      targetText: translatedText,
+      sourceLang: args.sourceLang || "auto",
+      targetLang: args.targetLang,
+      detectedSourceLang,
+      characterCount: args.text.length,
+    });
 
-      await ctx.runMutation(api.stats.record, {
-        characterCount: args.text.length,
-      });
-    }
+    await ctx.runMutation(api.stats.record, {
+      characterCount: args.text.length,
+    });
 
     return { translatedText, detectedSourceLang };
   },

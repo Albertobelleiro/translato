@@ -23,6 +23,8 @@ beforeEach(() => {
   delete process.env.CONVEX_URL;
   delete process.env.CLERK_PUBLISHABLE_KEY;
   delete process.env.VITE_CLERK_PUBLISHABLE_KEY;
+  delete process.env.INTERNAL_ALLOWED_EMAILS;
+  delete process.env.INTERNAL_ALLOWED_DOMAINS;
   mock.module("../../src/translator/translate.ts", () => ({
     translate: translateMock,
     getLanguages: getLanguagesMock,
@@ -100,24 +102,30 @@ describe("handleConfig", () => {
   test("returns 200 with convex and clerk keys", async () => {
     process.env.CONVEX_URL = "https://example.convex.cloud";
     process.env.CLERK_PUBLISHABLE_KEY = "pk_test_example";
+    process.env.INTERNAL_ALLOWED_EMAILS = "me@example.com";
     const { handleConfig } = await loadRoutes();
     const res = await handleConfig();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       convexUrl: "https://example.convex.cloud",
       clerkPublishableKey: "pk_test_example",
+      internalAllowedEmails: ["me@example.com"],
+      internalAllowedDomains: [],
     });
   });
 
   test("falls back to VITE_CLERK_PUBLISHABLE_KEY", async () => {
     process.env.CONVEX_URL = "https://example.convex.cloud";
     process.env.VITE_CLERK_PUBLISHABLE_KEY = "pk_test_vite";
+    process.env.INTERNAL_ALLOWED_DOMAINS = "example.com";
     const { handleConfig } = await loadRoutes();
     const res = await handleConfig();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       convexUrl: "https://example.convex.cloud",
       clerkPublishableKey: "pk_test_vite",
+      internalAllowedEmails: [],
+      internalAllowedDomains: ["example.com"],
     });
   });
 });

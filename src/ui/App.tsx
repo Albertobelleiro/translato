@@ -1,11 +1,11 @@
-import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
-import { LanguageSquareIcon } from "@hugeicons/core-free-icons";
+import { UserButton } from "@clerk/clerk-react";
+import { Globe02Icon, LanguageSquareIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useEffect, useReducer, useRef } from "react";
 
 import { api } from "../../convex/_generated/api";
-import { languages, sourceLangs } from "../translator/languages.ts";
+import { languages } from "../translator/languages.ts";
 import { History } from "./components/History.tsx";
 import { LanguageSelector } from "./components/LanguageSelector.tsx";
 import { SwapButton } from "./components/SwapButton.tsx";
@@ -31,42 +31,29 @@ type Action =
   | { type: "SWAP_LANGS" }
   | { type: "CLEAR" };
 
-const sourceLangCodes = new Set(sourceLangs.map((lang) => lang.code));
-const targetLangCodes = new Set(languages.map((lang) => lang.code));
-const preferredTargetBySource: Record<string, string> = {
-  EN: "EN-US",
-  PT: "PT-BR",
-  ZH: "ZH-HANS",
-};
+const DEFAULT_TARGET_LANG = "EN-US";
+const bilateralTargetLanguages = languages.filter((lang) => lang.code === "EN-US" || lang.code === "ES");
 
-function toSourceLang(code: string): string {
-  if (sourceLangCodes.has(code)) return code;
-  const base = code.split("-")[0] ?? "";
-  return base && sourceLangCodes.has(base) ? base : "";
+function toBilateralTarget(code: string): string {
+  return code === "ES" ? "ES" : DEFAULT_TARGET_LANG;
 }
 
-function toTargetLang(code: string): string {
-  if (targetLangCodes.has(code)) return code;
-  const preferred = preferredTargetBySource[code];
-  if (preferred && targetLangCodes.has(preferred)) return preferred;
-  return languages[0]?.code ?? "ES";
+function targetFromDetectedLanguage(code: string): string | null {
+  const normalized = code.toUpperCase();
+  if (normalized === "ES" || normalized.startsWith("ES-")) return "EN-US";
+  if (normalized === "EN" || normalized.startsWith("EN-")) return "ES";
+  return null;
 }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "SET_SOURCE_TEXT": return { ...state, sourceText: action.payload };
     case "SET_TARGET_TEXT": return { ...state, targetText: action.payload };
-    case "SET_SOURCE_LANG": return { ...state, sourceLang: action.payload };
+    case "SET_SOURCE_LANG": return { ...state, sourceLang: "" };
     case "SET_TARGET_LANG": return { ...state, targetLang: action.payload };
     case "SET_LOADING": return { ...state, isLoading: action.payload };
     case "SET_ERROR": return { ...state, error: action.payload };
-    case "SWAP_LANGS": return {
-      ...state,
-      sourceLang: toSourceLang(state.targetLang),
-      targetLang: toTargetLang(state.sourceLang || state.targetLang),
-      sourceText: state.targetText,
-      targetText: state.sourceText,
-    };
+    case "SWAP_LANGS": return state;
     case "CLEAR": return { ...state, sourceText: "", targetText: "", error: null };
   }
 }
@@ -75,7 +62,7 @@ const initialState: State = {
   sourceText: "",
   targetText: "",
   sourceLang: "",
-  targetLang: "ES",
+  targetLang: DEFAULT_TARGET_LANG,
   isLoading: false,
   error: null,
 };
@@ -86,7 +73,7 @@ export function App() {
   const { isAuthenticated } = useConvexAuth();
   const preferences = useQuery(api.preferences.get, isAuthenticated ? {} : "skip");
   const savePreferences = useMutation(api.preferences.save);
-  const { translatedText, isLoading, error, forceTranslate } = useTranslate(
+  const { translatedText, detectedLang, isLoading, error, forceTranslate } = useTranslate(
     state.sourceText,
     state.sourceLang,
     state.targetLang,
@@ -103,9 +90,8 @@ export function App() {
     }
     if (preferences === undefined || didHydratePreferences.current) return;
     if (preferences) {
-      const sourceLang = preferences.sourceLang === "auto" ? "" : toSourceLang(preferences.sourceLang);
-      dispatch({ type: "SET_SOURCE_LANG", payload: sourceLang });
-      dispatch({ type: "SET_TARGET_LANG", payload: toTargetLang(preferences.targetLang) });
+      dispatch({ type: "SET_SOURCE_LANG", payload: "" });
+      dispatch({ type: "SET_TARGET_LANG", payload: toBilateralTarget(preferences.targetLang) });
     }
     didHydratePreferences.current = true;
   }, [preferences, isAuthenticated]);
@@ -113,10 +99,17 @@ export function App() {
   useEffect(() => {
     if (!isAuthenticated || !didHydratePreferences.current) return;
     void savePreferences({
-      sourceLang: state.sourceLang || "auto",
+      sourceLang: "auto",
       targetLang: state.targetLang,
     });
-  }, [state.sourceLang, state.targetLang, savePreferences, isAuthenticated]);
+  }, [state.targetLang, savePreferences, isAuthenticated]);
+
+  useEffect(() => {
+    if (!state.sourceText.trim()) return;
+    const detectedTarget = targetFromDetectedLanguage(detectedLang);
+    if (!detectedTarget || detectedTarget === state.targetLang) return;
+    dispatch({ type: "SET_TARGET_LANG", payload: detectedTarget });
+  }, [detectedLang, state.sourceText, state.targetLang]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -129,8 +122,6 @@ export function App() {
     return () => document.removeEventListener("keydown", handleKey);
   }, [forceTranslate]);
 
-  const canSwap = state.sourceLang !== "";
-
   return (
     <div className="app">
       <header className="app-header">
@@ -140,47 +131,33 @@ export function App() {
         </div>
         <div className="app-header-actions">
           <span className="app-subtitle">Powered by DeepL</span>
-          <SignedOut>
-            <>
-              <SignInButton mode="modal">
-                <button type="button" className="auth-btn">Sign in</button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button type="button" className="auth-btn auth-btn-secondary">Sign up</button>
-              </SignUpButton>
-            </>
-          </SignedOut>
-          <SignedIn>
-            <UserButton
-              appearance={{
-                elements: {
-                  avatarBox: {
-                    width: 28,
-                    height: 28,
-                  },
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: {
+                  width: 28,
+                  height: 28,
                 },
-              }}
-            />
-          </SignedIn>
+              },
+            }}
+          />
         </div>
       </header>
 
       <main className="translator">
         <div className="lang-bar">
           <div className="lang-bar-side">
-            <LanguageSelector
-              value={state.sourceLang}
-              onChange={(code) => dispatch({ type: "SET_SOURCE_LANG", payload: code })}
-              languages={sourceLangs}
-              showAutoDetect
-            />
+            <button className="lang-trigger" type="button" disabled>
+              <HugeiconsIcon icon={Globe02Icon} size={18} />
+              <span className="lang-trigger-label">Detect language</span>
+            </button>
           </div>
-          <SwapButton onSwap={() => dispatch({ type: "SWAP_LANGS" })} disabled={!canSwap} />
+          <SwapButton onSwap={() => dispatch({ type: "SWAP_LANGS" })} disabled />
           <div className="lang-bar-side">
             <LanguageSelector
               value={state.targetLang}
               onChange={(code) => dispatch({ type: "SET_TARGET_LANG", payload: code })}
-              languages={languages}
+              languages={bilateralTargetLanguages}
             />
           </div>
         </div>
@@ -205,8 +182,11 @@ export function App() {
             onSelect={(item) => {
               dispatch({ type: "SET_SOURCE_TEXT", payload: item.sourceText });
               dispatch({ type: "SET_TARGET_TEXT", payload: item.targetText });
-              dispatch({ type: "SET_SOURCE_LANG", payload: item.sourceLang === "auto" ? "" : toSourceLang(item.sourceLang) });
-              dispatch({ type: "SET_TARGET_LANG", payload: toTargetLang(item.targetLang) });
+              dispatch({ type: "SET_SOURCE_LANG", payload: "" });
+              dispatch({
+                type: "SET_TARGET_LANG",
+                payload: targetFromDetectedLanguage(item.detectedSourceLang ?? "") ?? toBilateralTarget(item.targetLang),
+              });
             }}
           />
         )}

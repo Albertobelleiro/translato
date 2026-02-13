@@ -8,13 +8,38 @@ export type AuthUser = {
   name?: string;
 };
 
+function parseAllowList(value: string | undefined): Set<string> {
+  return new Set(
+    (value ?? "")
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+function isAllowedInternalEmail(email: string): boolean {
+  const allowedEmails = parseAllowList(process.env.INTERNAL_ALLOWED_EMAILS);
+  const allowedDomains = parseAllowList(process.env.INTERNAL_ALLOWED_DOMAINS);
+
+  if (allowedEmails.size === 0 && allowedDomains.size === 0) return false;
+
+  const normalized = email.toLowerCase();
+  if (allowedEmails.has(normalized)) return true;
+
+  const domain = normalized.split("@")[1] ?? "";
+  return domain.length > 0 && allowedDomains.has(domain);
+}
+
 export async function getUser(ctx: AuthCtx): Promise<AuthUser | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
 
+  const email = identity.email ?? undefined;
+  if (!email || !isAllowedInternalEmail(email)) return null;
+
   return {
     id: identity.tokenIdentifier,
-    email: identity.email ?? undefined,
+    email,
     name: identity.name ?? undefined,
   };
 }
