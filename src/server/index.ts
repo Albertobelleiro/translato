@@ -77,24 +77,27 @@ Bun.serve({
 
     if (req.method === "GET" && url.pathname === "/api/languages") {
       try {
+        const headers = { Authorization: `DeepL-Auth-Key ${DEEPL_KEY}` };
         const [sourceRes, targetRes] = await Promise.all([
-          fetch(`${DEEPL_URL}/languages?type=source`, {
-            headers: { Authorization: `DeepL-Auth-Key ${DEEPL_KEY}` },
-            signal: AbortSignal.timeout(5000),
-          }),
-          fetch(`${DEEPL_URL}/languages?type=target`, {
-            headers: { Authorization: `DeepL-Auth-Key ${DEEPL_KEY}` },
-            signal: AbortSignal.timeout(5000),
-          }),
+          fetch(`${DEEPL_URL}/languages?type=source`, { headers, signal: AbortSignal.timeout(5000) }),
+          fetch(`${DEEPL_URL}/languages?type=target`, { headers, signal: AbortSignal.timeout(5000) }),
         ]);
 
-        if (!sourceRes.ok || !targetRes.ok) {
-          const deepLStatus = mapDeepLStatus(sourceRes.ok ? targetRes.status : sourceRes.status);
-          return json({ error: deepLStatus.error }, deepLStatus.status);
+        const failedRes = !sourceRes.ok ? sourceRes : !targetRes.ok ? targetRes : null;
+        if (failedRes) {
+          // Drain bodies to avoid connection leaks
+          await sourceRes.body?.cancel();
+          await targetRes.body?.cancel();
+          const mapped = mapDeepLStatus(failedRes.status);
+          return json({ error: mapped.error }, mapped.status);
         }
 
-        const source = await sourceRes.json();
-        const target = await targetRes.json();
+        const [source, target] = await Promise.all([sourceRes.json(), targetRes.json()]);
+
+        if (!Array.isArray(source) || !Array.isArray(target)) {
+          return json({ error: "Unexpected response from language service" }, 502);
+        }
+
         return json({ source, target });
       } catch (e) {
         if (e instanceof Error && e.name === "TimeoutError") {
