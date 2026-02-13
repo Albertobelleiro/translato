@@ -132,7 +132,13 @@ export async function translate(
       signal: AbortSignal.timeout(5000),
     });
     const data = await parseResponse<DeepLTranslateResult>(res);
-    const t = data.translations[0]!;
+    if (!Array.isArray(data.translations) || data.translations.length === 0) {
+      throw new DeepLError(502, "Translation service returned an empty result");
+    }
+    const t = data.translations[0];
+    if (!t) {
+      throw new DeepLError(502, "Translation service returned an empty result");
+    }
     return {
       translatedText: t.text,
       detectedSourceLang: t.detected_source_language,

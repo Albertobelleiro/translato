@@ -41,7 +41,7 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Build
         run: npm run build
         env:
@@ -61,6 +61,6 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Audit (high severity)
         run: npm audit --audit-level=high

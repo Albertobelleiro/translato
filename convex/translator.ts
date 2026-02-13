@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { MAX_TEXT_BYTES } from "../src/shared/constants.ts";
 import { api } from "./_generated/api";
 import { action } from "./_generated/server";
 import { requireUser } from "./helpers";
@@ -13,11 +14,18 @@ type RateLimitBucket = {
   windowStartedAt: number;
 };
 
-// Best-effort burst protection for translation calls.
+// Best-effort burst protection for translation calls, only effective within a single warm isolate.
 const translationRateLimitBuckets = new Map<string, RateLimitBucket>();
 
 function consumeTranslationToken(userId: string): number | null {
   const now = Date.now();
+
+  for (const [bucketUserId, bucket] of translationRateLimitBuckets.entries()) {
+    if (now - bucket.windowStartedAt >= RATE_LIMIT_WINDOW_MS) {
+      translationRateLimitBuckets.delete(bucketUserId);
+    }
+  }
+
   const existing = translationRateLimitBuckets.get(userId);
 
   if (!existing || now - existing.windowStartedAt >= RATE_LIMIT_WINDOW_MS) {
@@ -42,7 +50,9 @@ export const translate = action({
   },
   handler: async (ctx, args) => {
     if (!args.text.trim()) throw new Error("Text must not be empty");
-    if (new TextEncoder().encode(args.text).length >= 128 * 1024) throw new Error("Text exceeds 128 KiB limit");
+    if (new TextEncoder().encode(args.text).length > MAX_TEXT_BYTES) {
+      throw new Error("Text exceeds maximum length of 128,000 bytes");
+    }
 
     const user = await requireUser(ctx);
     const retryAfterMs = consumeTranslationToken(user.id);

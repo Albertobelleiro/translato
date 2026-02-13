@@ -92,6 +92,15 @@ describe("translate()", () => {
     await expect(translate("Hello", "ES")).rejects.toMatchObject({ status: 429 });
   });
 
+  test("throws DeepLError when DeepL returns no translations", async () => {
+    fetchSpy.mockResolvedValue(new Response(JSON.stringify({ translations: [] }), { status: 200 }));
+    const { translate } = await loadModule();
+    await expect(translate("Hello", "ES")).rejects.toMatchObject({
+      status: 502,
+      message: "Translation service returned an empty result",
+    });
+  });
+
   test("sends auth and content-type headers", async () => {
     fetchSpy.mockResolvedValue(new Response(JSON.stringify(mockDeepLTranslateResult()), { status: 200 }));
     const { translate } = await loadModule();

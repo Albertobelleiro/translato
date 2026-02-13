@@ -1,3 +1,4 @@
+import { MAX_TEXT_BYTES } from "../shared/constants.ts";
 import {
   getFallbackLanguages,
   getLanguages,
@@ -33,7 +34,15 @@ export function handleOptions(): Response {
 
 export async function handleTranslate(req: Request): Promise<Response> {
   try {
-    const body = (await req.json()) as Partial<TranslateRequest>;
+    let body: Partial<TranslateRequest>;
+    try {
+      body = (await req.json()) as Partial<TranslateRequest>;
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return errorResponse("Malformed JSON body", 400);
+      }
+      throw error;
+    }
 
     if (!body.text || typeof body.text !== "string" || body.text.trim() === "") {
       return errorResponse("text is required and must be a non-empty string", 400);
@@ -45,7 +54,7 @@ export async function handleTranslate(req: Request): Promise<Response> {
     ) {
       return errorResponse("target_lang is required and must be a non-empty string", 400);
     }
-    if (new TextEncoder().encode(body.text).byteLength > 128_000) {
+    if (new TextEncoder().encode(body.text).byteLength > MAX_TEXT_BYTES) {
       return errorResponse("text exceeds maximum length of 128,000 bytes", 400);
     }
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { MAX_TEXT_BYTES } from "../../src/shared/constants.ts";
 import { DeepLError } from "../../src/translator/types";
 
 let getLanguagesMock = mock(async () => [{ language: "DE", name: "German" }]);
@@ -83,7 +84,7 @@ describe("handleTranslate", () => {
 
   test("returns 400 when text exceeds 128KB", async () => {
     const { handleTranslate } = await loadRoutes();
-    const bigText = "a".repeat(128_001);
+    const bigText = "a".repeat(MAX_TEXT_BYTES + 1);
     const req = new Request("http://localhost/api/translate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -91,6 +92,18 @@ describe("handleTranslate", () => {
     });
     const res = await handleTranslate(req);
     expect(res.status).toBe(400);
+  });
+
+  test("returns 400 for malformed JSON body", async () => {
+    const { handleTranslate } = await loadRoutes();
+    const req = new Request("http://localhost/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{\"text\":",
+    });
+    const res = await handleTranslate(req);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Malformed JSON body" });
   });
 
   test("maps DeepL 403 to 401", async () => {

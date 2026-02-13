@@ -42,6 +42,13 @@ describe("loadPublicRuntimeConfig", () => {
     process.env.VITE_CONVEX_URL = "http://example.convex.cloud";
     process.env.VITE_CLERK_PUBLISHABLE_KEY = "pk_test_abc123";
     const { loadPublicRuntimeConfig } = await loadRuntimeConfigModule();
+    expect(() => loadPublicRuntimeConfig()).toThrow("CONVEX URL must use https");
+  });
+
+  test("throws generic error when VITE_CONVEX_URL is invalid", async () => {
+    process.env.VITE_CONVEX_URL = "not-a-url";
+    process.env.VITE_CLERK_PUBLISHABLE_KEY = "pk_test_abc123";
+    const { loadPublicRuntimeConfig } = await loadRuntimeConfigModule();
     expect(() => loadPublicRuntimeConfig()).toThrow("VITE_CONVEX_URL must be a valid https URL");
   });
 

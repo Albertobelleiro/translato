@@ -44,13 +44,18 @@ function requireEnv(key: string, helpText: string): string {
 }
 
 function validateConvexUrl(value: string): string {
+  let parsed: URL;
   try {
-    const parsed = new URL(value);
-    if (parsed.protocol !== "https:") throw new Error("CONVEX URL must use https");
-    return value;
+    parsed = new URL(value);
   } catch {
     throw new Error("VITE_CONVEX_URL must be a valid https URL");
   }
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("CONVEX URL must use https");
+  }
+
+  return value;
 }
 
 function validateClerkKey(value: string): string {
