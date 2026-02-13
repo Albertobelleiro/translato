@@ -64,6 +64,8 @@ export function useTranslate(
     if (timerRef.current) clearTimeout(timerRef.current);
 
     if (!sourceText.trim()) {
+      abortRef.current?.abort();
+      abortRef.current = null;
       setTranslatedText("");
       setDetectedLang("");
       setIsLoading(false);
