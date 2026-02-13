@@ -84,7 +84,12 @@ export async function loadPublicRuntimeConfigAsync(): Promise<PublicRuntimeConfi
     return loadPublicRuntimeConfig();
   } catch {
     // Env vars not available client-side (Bun dev server) — fetch from /api/config
-    const res = await fetch("/api/config");
+    let res: Response;
+    try {
+      res = await fetch("/api/config");
+    } catch {
+      throw new Error("Missing VITE_CONVEX_URL. Set it in .env.local for development and in Vercel for deployments.");
+    }
     if (!res.ok) throw new Error(`Failed to load config from server: ${res.status}`);
     const data = (await res.json()) as { convexUrl?: string; clerkPublishableKey?: string };
     if (!data.convexUrl || !data.clerkPublishableKey) {
