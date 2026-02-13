@@ -1,7 +1,19 @@
+import { useState } from "react";
 import type { TranslationHistoryItem } from "../historyStore.ts";
 
-function short(text: string) {
-  return text.length > 56 ? `${text.slice(0, 56)}...` : text;
+const LANG_NAMES: Record<string, string> = {
+  "EN-US": "English",
+  "EN": "English",
+  "ES": "Spanish",
+  auto: "Auto",
+};
+
+function langName(code: string): string {
+  return LANG_NAMES[code.toUpperCase()] ?? code;
+}
+
+function short(text: string, max = 48) {
+  return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 
 function ago(timestamp: number) {
@@ -12,32 +24,67 @@ function ago(timestamp: number) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function History({
+export function HistoryTabs({
   items = [],
   onSelect,
 }: {
   items?: TranslationHistoryItem[];
   onSelect: (item: TranslationHistoryItem) => void;
 }) {
-  if (items.length === 0) return null;
+  const [activeTab, setActiveTab] = useState<"history" | "dictionary">("history");
 
   return (
-    <section style={{ background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", padding: "var(--spacing-3)" }}>
-      <div style={{ color: "var(--color-text-secondary)", fontSize: 12, marginBottom: "var(--spacing-2)" }}>Recent translations</div>
-      <div style={{ display: "grid", gap: "var(--spacing-2)", maxHeight: 180, overflowY: "auto" }}>
-        {items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => onSelect(item)}
-            style={{ textAlign: "left", border: "1px solid var(--color-border-stroke)", background: "var(--color-bg-input)", color: "var(--color-text-primary)", borderRadius: "var(--radius-md)", padding: "var(--spacing-2)", cursor: "pointer" }}
-          >
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{item.sourceLang === "auto" ? item.detectedSourceLang ?? "auto" : item.sourceLang}{" -> "}{item.targetLang} • {ago(item.createdAt)}</div>
-            <div>{short(item.sourceText)}</div>
-            <div style={{ color: "var(--color-text-secondary)" }}>{short(item.targetText)}</div>
-          </button>
-        ))}
+    <section className="history-section">
+      <div className="history-tabs">
+        <button
+          type="button"
+          className={`history-tab${activeTab === "history" ? " history-tab-active" : ""}`}
+          onClick={() => setActiveTab("history")}
+        >
+          History
+        </button>
+        <button
+          type="button"
+          className="history-tab"
+          disabled
+          title="Coming soon"
+        >
+          Dictionary
+        </button>
       </div>
+
+      {activeTab === "history" && (
+        items.length === 0 ? (
+          <div className="history-empty">No translations yet</div>
+        ) : (
+          <div className="history-list">
+            {items.map((item) => {
+              const srcLang = item.sourceLang === "auto"
+                ? (item.detectedSourceLang ?? "auto")
+                : item.sourceLang;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="history-item"
+                  onClick={() => onSelect(item)}
+                >
+                  <span className="history-badge">
+                    {langName(srcLang)} → {langName(item.targetLang)}
+                  </span>
+                  <span />
+                  <span className="history-time">{ago(item.createdAt)}</span>
+                  <div className="history-texts">
+                    <span className="history-source">{short(item.sourceText)}</span>
+                    <span className="history-arrow">→</span>
+                    <span className="history-target">{short(item.targetText)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )
+      )}
     </section>
   );
 }

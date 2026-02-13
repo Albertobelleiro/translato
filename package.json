@@ -11,9 +11,9 @@
   "scripts": {
     "dev": "bun --hot src/server/index.ts",
     "typecheck": "bun run tsc --noEmit",
-    "test": "bun test",
-    "test:coverage": "bun test --coverage",
-    "ci": "bun run typecheck && bun test"
+    "test": "bun test tests/convex/*.test.ts tests/server/*.test.ts tests/translator/*.test.ts",
+    "test:coverage": "bun test --coverage tests/convex/*.test.ts tests/server/*.test.ts tests/translator/*.test.ts",
+    "ci": "bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -23,7 +23,10 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@hugeicons/core-free-icons": "^3.1.1",
     "@hugeicons/react": "^1.1.5",
+    "@vercel/analytics": "^1.6.1",
+    "animejs": "^4.3.5",
     "convex": "^1.31.7",
+    "facehash": "^0.0.7",
     "nucleo-flags": "^1.1.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

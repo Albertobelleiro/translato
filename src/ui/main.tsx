@@ -1,4 +1,5 @@
 import { ClerkProvider, SignIn, SignOutButton, SignedIn, SignedOut, useAuth, useUser } from "@clerk/clerk-react";
+import { Analytics } from "@vercel/analytics/react";
 import { ConvexReactClient, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Component, type ErrorInfo, type ReactNode } from "react";
@@ -6,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import { api } from "../../convex/_generated/api";
 
 import { App } from "./App.tsx";
+import { initTheme } from "./hooks/useTheme.ts";
 import "./styles/app.css";
 
 if (import.meta.hot) {
@@ -31,6 +33,28 @@ type ConvexRuntimeBoundaryState = {
 };
 
 const clientEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchRuntimeConfig(): Promise<RuntimeConfig> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch("/api/config", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load runtime config from /api/config (${response.status})`);
+      return await response.json() as RuntimeConfig;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) await sleep(250);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? new Error(`Unable to load runtime config: ${lastError.message}`)
+    : new Error("Unable to load runtime config");
+}
 
 class ConvexRuntimeBoundary extends Component<ConvexRuntimeBoundaryProps, ConvexRuntimeBoundaryState> {
   override state: ConvexRuntimeBoundaryState = { message: null };
@@ -63,9 +87,7 @@ async function loadRuntimeConfig(): Promise<LoadedRuntimeConfig> {
   let clerkPublishableKey = clientEnv?.CLERK_PUBLISHABLE_KEY ?? clientEnv?.VITE_CLERK_PUBLISHABLE_KEY;
 
   if (!convexUrl || !clerkPublishableKey) {
-    const response = await fetch("/api/config");
-    if (!response.ok) throw new Error("Unable to load runtime config from /api/config");
-    const config = await response.json() as RuntimeConfig;
+    const config = await fetchRuntimeConfig();
     convexUrl ??= config.convexUrl;
     clerkPublishableKey ??= config.clerkPublishableKey;
   }
@@ -105,14 +127,28 @@ function InternalAccessGate() {
   return <App />;
 }
 
-const root = document.getElementById("root");
+let reactRoot: ReturnType<typeof createRoot> | null = null;
+let convexClient: ConvexReactClient | null = null;
+
 async function boot(): Promise<void> {
-  if (!root) return;
+  const container = document.getElementById("root");
+  if (!container) return;
+
+  // Apply saved theme before rendering to prevent flash
+  initTheme();
 
   const { convexUrl, clerkPublishableKey } = await loadRuntimeConfig();
-  const convex = new ConvexReactClient(convexUrl);
+  if (!convexClient) {
+    convexClient = new ConvexReactClient(convexUrl);
+  }
 
-  createRoot(root).render(
+  if (!reactRoot) {
+    reactRoot = createRoot(container);
+  }
+
+  reactRoot.render(
+    <>
+    <Analytics />
     <ClerkProvider
       publishableKey={clerkPublishableKey}
       appearance={{
@@ -132,19 +168,21 @@ async function boot(): Promise<void> {
         </div>
       </SignedOut>
       <SignedIn>
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
           <ConvexRuntimeBoundary>
             <InternalAccessGate />
           </ConvexRuntimeBoundary>
         </ConvexProviderWithClerk>
       </SignedIn>
-    </ClerkProvider>,
+    </ClerkProvider>
+    </>,
   );
 }
 
 void boot().catch((error: unknown) => {
   console.error(error);
-  if (root) {
-    root.textContent = error instanceof Error ? error.message : "Failed to initialize app";
+  const container = document.getElementById("root");
+  if (container) {
+    container.textContent = error instanceof Error ? error.message : "Failed to initialize app";
   }
 });
