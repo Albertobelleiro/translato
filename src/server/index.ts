@@ -1,5 +1,5 @@
 import index from "../ui/index.html";
-import { handleLanguages, handleTranslate, handleUsage } from "./routes.ts";
+import { handleConfig, handleLanguages, handleUsage } from "./routes.ts";
 
 if (!process.env.DEEPL_API_KEY) {
   console.error("Missing DEEPL_API_KEY in .env");
@@ -9,14 +9,14 @@ if (!process.env.DEEPL_API_KEY) {
 Bun.serve({
   routes: {
     "/": index,
-    "/api/translate": {
-      POST: handleTranslate,
-    },
     "/api/languages": {
       GET: handleLanguages,
     },
     "/api/usage": {
       GET: handleUsage,
+    },
+    "/api/config": {
+      GET: handleConfig,
     },
   },
   development: { hmr: true, console: true },

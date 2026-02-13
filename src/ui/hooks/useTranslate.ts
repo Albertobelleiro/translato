@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useAction } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 interface TranslateResult {
   translatedText: string;
@@ -19,6 +21,8 @@ export function useTranslate(
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = useRef(0);
+  const translateAction = useAction(api.translator.translate);
 
   const doTranslate = (text: string) => {
     if (!text.trim() || !targetLang) {
@@ -31,31 +35,25 @@ export function useTranslate(
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
     setError(null);
 
-    fetch("/api/translate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text,
-        source_lang: sourceLang || undefined,
-        target_lang: targetLang,
-      }),
-      signal: controller.signal,
+    translateAction({
+      text,
+      sourceLang: sourceLang || undefined,
+      targetLang,
     })
-      .then((res) => {
-        if (!res.ok) return res.json().then((e: { error?: string }) => { throw new Error(e.error || `Error ${res.status}`); });
-        return res.json() as Promise<{ translatedText: string; detectedSourceLang: string }>;
-      })
       .then((data) => {
+        if (controller.signal.aborted || requestId !== requestIdRef.current) return;
         setTranslatedText(data.translatedText);
         setDetectedLang(data.detectedSourceLang);
         setIsLoading(false);
       })
-      .catch((err: Error) => {
-        if (err.name === "AbortError") return;
-        setError(err.message);
+      .catch((err: unknown) => {
+        if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+        const message = err instanceof Error ? err.message : "Translation failed";
+        setError(message);
         setIsLoading(false);
       });
   };

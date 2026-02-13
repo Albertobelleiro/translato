@@ -1,6 +1,7 @@
 import { getLanguages, getUsage, translate } from "../translator/translate";
 import { DeepLError, type TranslateRequest } from "../translator/types";
 const MAX_TEXT_BYTES = 128 * 1024;
+let convexUrlCache: string | null | undefined;
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -41,4 +42,28 @@ export async function handleUsage(): Promise<Response> {
     if (error instanceof DeepLError) return errorResponse(error.message, error.status);
     return errorResponse("Internal server error", 500);
   }
+}
+
+async function resolveConvexUrl(): Promise<string | null> {
+  if (convexUrlCache !== undefined) return convexUrlCache;
+  if (process.env.CONVEX_URL) {
+    convexUrlCache = process.env.CONVEX_URL;
+    return convexUrlCache;
+  }
+
+  try {
+    const envLocal = await Bun.file(".env.local").text();
+    const match = envLocal.match(/^CONVEX_URL=(.+)$/m);
+    convexUrlCache = match?.[1]?.trim() ?? null;
+    return convexUrlCache;
+  } catch {
+    convexUrlCache = null;
+    return convexUrlCache;
+  }
+}
+
+export async function handleConfig(): Promise<Response> {
+  const convexUrl = await resolveConvexUrl();
+  if (!convexUrl) return errorResponse("Missing CONVEX_URL", 500);
+  return jsonResponse({ convexUrl });
 }

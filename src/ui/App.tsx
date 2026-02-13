@@ -1,9 +1,12 @@
-import { useReducer, useEffect } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { LanguageSquareIcon } from "@hugeicons/core-free-icons";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { LanguageSelector } from "./components/LanguageSelector.tsx";
 import { SwapButton } from "./components/SwapButton.tsx";
 import { TranslatorPanel } from "./components/TranslatorPanel.tsx";
+import { History } from "./components/History.tsx";
 import { useTranslate } from "./hooks/useTranslate.ts";
 import { languages, sourceLangs } from "../translator/languages.ts";
 
@@ -77,6 +80,9 @@ const initialState: State = {
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const didHydratePreferences = useRef(false);
+  const preferences = useQuery(api.preferences.get);
+  const savePreferences = useMutation(api.preferences.save);
   const { translatedText, isLoading, error, forceTranslate } = useTranslate(
     state.sourceText,
     state.sourceLang,
@@ -86,6 +92,24 @@ export function App() {
   useEffect(() => { dispatch({ type: "SET_TARGET_TEXT", payload: translatedText }); }, [translatedText]);
   useEffect(() => { dispatch({ type: "SET_LOADING", payload: isLoading }); }, [isLoading]);
   useEffect(() => { dispatch({ type: "SET_ERROR", payload: error }); }, [error]);
+
+  useEffect(() => {
+    if (preferences === undefined || didHydratePreferences.current) return;
+    if (preferences) {
+      const sourceLang = preferences.sourceLang === "auto" ? "" : toSourceLang(preferences.sourceLang);
+      dispatch({ type: "SET_SOURCE_LANG", payload: sourceLang });
+      dispatch({ type: "SET_TARGET_LANG", payload: toTargetLang(preferences.targetLang) });
+    }
+    didHydratePreferences.current = true;
+  }, [preferences]);
+
+  useEffect(() => {
+    if (!didHydratePreferences.current) return;
+    void savePreferences({
+      sourceLang: state.sourceLang || "auto",
+      targetLang: state.targetLang,
+    });
+  }, [state.sourceLang, state.targetLang, savePreferences]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -144,6 +168,15 @@ export function App() {
             error={state.error}
           />
         </div>
+
+        <History
+          onSelect={(item) => {
+            dispatch({ type: "SET_SOURCE_TEXT", payload: item.sourceText });
+            dispatch({ type: "SET_TARGET_TEXT", payload: item.targetText });
+            dispatch({ type: "SET_SOURCE_LANG", payload: item.sourceLang === "auto" ? "" : toSourceLang(item.sourceLang) });
+            dispatch({ type: "SET_TARGET_LANG", payload: toTargetLang(item.targetLang) });
+          }}
+        />
       </main>
 
       <footer className="app-footer">
