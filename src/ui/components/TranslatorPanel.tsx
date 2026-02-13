@@ -1,8 +1,9 @@
-import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
-import { TextArea } from "./TextArea.tsx";
+import { HugeiconsIcon } from "@hugeicons/react";
+
 import { CharCount } from "./CharCount.tsx";
 import { CopyButton } from "./CopyButton.tsx";
+import { TextArea } from "./TextArea.tsx";
 
 interface TranslatorPanelProps {
   mode: "source" | "target";

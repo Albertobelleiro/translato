@@ -1,13 +1,14 @@
-import type { FC } from "react";
-import type { IconProps } from "nucleo-flags";
 import {
-  IconSaudiArabia, IconBulgaria, IconCzechia, IconDenmark, IconGermany,
-  IconGreece, IconUnitedKingdom, IconUnitedStates, IconSpain, IconEstonia,
-  IconFinland, IconFrance, IconHungary, IconIndonesia, IconItaly, IconJapan,
-  IconSouthKorea, IconLithuania, IconLatvia, IconNorway, IconNetherlands,
-  IconPoland, IconBrazil, IconPortugal, IconRomania, IconRussia, IconSlovakia,
-  IconSlovenia, IconSweden, IconTurkey, IconUkraine, IconChina, IconTaiwan,
+  IconBrazil, IconBulgaria, IconChina, IconCzechia, IconDenmark,
+  IconEstonia, IconFinland, IconFrance, IconGermany, IconGreece,
+  IconHungary, IconIndonesia, IconItaly, IconJapan, IconLatvia,
+  IconLithuania, IconNetherlands, IconNorway, IconPoland, IconPortugal,
+  IconRomania, IconRussia, IconSaudiArabia, IconSlovakia, IconSlovenia,
+  IconSouthKorea, IconSpain, IconSweden, IconTaiwan, IconTurkey,
+  IconUkraine, IconUnitedKingdom, IconUnitedStates,
 } from "nucleo-flags";
+import type { IconProps } from "nucleo-flags";
+import type { FC } from "react";
 
 export interface Language {
   code: string;

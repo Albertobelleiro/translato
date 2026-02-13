@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { CheckmarkCircle02Icon, Copy01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Copy01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
+import { useRef, useState } from "react";
 
 interface CopyButtonProps {
   text: string;
