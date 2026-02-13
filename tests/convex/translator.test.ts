@@ -1,27 +1,24 @@
 import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { convexTest } from "convex-test";
+import { api } from "../../convex/_generated/api";
 import { mapDeepLError } from "../../convex/lib/errors";
+import schema from "../../convex/schema";
 
-function setupAuthMocks(): void {
-  mock.module("../../convex/helpers.ts", () => ({
-    requireUser: async (ctx: { auth: { getUserIdentity: () => Promise<{ tokenIdentifier: string; email?: string } | null> } }) => {
-      const identity = await ctx.auth.getUserIdentity();
-      if (!identity) throw new Error("Not authenticated");
-      return {
-        id: identity.tokenIdentifier,
-        email: identity.email,
-      };
-    },
-  }));
+const convexModules = {
+  "convex/_generated/api.ts": () => import("../../convex/_generated/api.ts"),
+  "convex/stats.ts": () => import("../../convex/stats.ts"),
+  "convex/translator.ts": () => import("../../convex/translator.ts"),
+};
+
+function createTestConvex() {
+  return convexTest(schema, convexModules);
 }
-
-const loadTranslatorModule = () => import(`../../convex/translator.ts?test=${crypto.randomUUID()}`);
 
 beforeEach(() => {
   mock.restore();
   process.env.DEEPL_API_KEY = "test-key";
   process.env.INTERNAL_ALLOWED_EMAILS = "me@example.com";
   delete process.env.INTERNAL_ALLOWED_DOMAINS;
-  setupAuthMocks();
 });
 
 describe("mapDeepLError", () => {
@@ -48,15 +45,10 @@ describe("mapDeepLError", () => {
 
 describe("translate action auth enforcement", () => {
   test("rejects unauthenticated calls before contacting DeepL", async () => {
-    const { translate } = await loadTranslatorModule();
+    const t = createTestConvex();
     const fetchSpy = spyOn(globalThis, "fetch");
 
-    const ctx = {
-      auth: { getUserIdentity: async () => null },
-      runMutation: mock(async () => null),
-    } as never;
-
-    await expect((translate as { _handler: (ctx: unknown, args: unknown) => Promise<unknown> })._handler(ctx, {
+    await expect(t.action(api.translator.translate, {
       text: "Hello",
       targetLang: "ES",
     })).rejects.toThrow("Not authenticated");
@@ -64,47 +56,54 @@ describe("translate action auth enforcement", () => {
   });
 
   test("calls DeepL and records usage for allowed users", async () => {
-    const { translate } = await loadTranslatorModule();
+    const t = createTestConvex().withIdentity({
+      tokenIdentifier: "user|allowed",
+      email: "me@example.com",
+    });
     const fetchSpy = spyOn(globalThis, "fetch");
     fetchSpy.mockResolvedValue(new Response(JSON.stringify({
       translations: [{ text: "Hola", detected_source_language: "EN" }],
     }), { status: 200 }));
 
-    const runMutation = mock(async () => null);
-    const ctx = {
-      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|allowed", email: "me@example.com" }) },
-      runMutation,
-    } as never;
-
-    await expect((translate as { _handler: (ctx: unknown, args: unknown) => Promise<unknown> })._handler(ctx, {
+    await expect(t.action(api.translator.translate, {
       text: "Hello",
       targetLang: "ES",
     })).resolves.toEqual({ translatedText: "Hola", detectedSourceLang: "EN" });
+
+    const usage = await t.query(api.stats.getToday);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(runMutation).toHaveBeenCalledTimes(1);
+    expect(usage).toMatchObject({
+      userId: "user|allowed",
+      translationCount: 1,
+      characterCount: 5,
+    });
   });
 
   test("throttles burst requests per user", async () => {
-    const { translate } = await loadTranslatorModule();
+    const t = createTestConvex().withIdentity({
+      tokenIdentifier: "user|throttle",
+      email: "me@example.com",
+    });
     const fetchSpy = spyOn(globalThis, "fetch");
     fetchSpy.mockImplementation((async () => new Response(JSON.stringify({
       translations: [{ text: "Hola", detected_source_language: "EN" }],
     }), { status: 200 })) as never);
 
-    const runMutation = mock(async () => null);
-    const ctx = {
-      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|throttle", email: "me@example.com" }) },
-      runMutation,
-    } as never;
-
-    const handler = (translate as { _handler: (ctx: unknown, args: unknown) => Promise<unknown> })._handler;
     for (let i = 0; i < 20; i += 1) {
-      await expect(handler(ctx, { text: `Hello ${i}`, targetLang: "ES" })).resolves.toEqual({
+      await expect(t.action(api.translator.translate, { text: `Hello ${i}`, targetLang: "ES" })).resolves.toEqual({
         translatedText: "Hola",
         detectedSourceLang: "EN",
       });
     }
 
-    await expect(handler(ctx, { text: "Hello 21", targetLang: "ES" })).rejects.toThrow("Rate limit exceeded");
+    const usage = await t.query(api.stats.getToday);
+    await expect(t.action(api.translator.translate, { text: "Hello 21", targetLang: "ES" })).rejects.toThrow("Rate limit exceeded");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(20);
+    expect(usage).toMatchObject({
+      userId: "user|throttle",
+      translationCount: 20,
+      characterCount: 150,
+    });
   });
 });
