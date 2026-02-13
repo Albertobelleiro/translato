@@ -10,7 +10,10 @@
   },
   "scripts": {
     "dev": "bun --hot src/server/index.ts",
-    "typecheck": "bun run tsc --noEmit"
+    "typecheck": "bun run tsc --noEmit",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "ci": "bun run typecheck && bun test"
   },
   "peerDependencies": {
     "typescript": "^5"
