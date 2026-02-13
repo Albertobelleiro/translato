@@ -1,15 +1,16 @@
-import { useEffect, useReducer, useRef } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { LanguageSquareIcon } from "@hugeicons/core-free-icons";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { LanguageSquareIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useEffect, useReducer, useRef } from "react";
+
 import { api } from "../../convex/_generated/api";
+import { languages, sourceLangs } from "../translator/languages.ts";
+import { History } from "./components/History.tsx";
 import { LanguageSelector } from "./components/LanguageSelector.tsx";
 import { SwapButton } from "./components/SwapButton.tsx";
 import { TranslatorPanel } from "./components/TranslatorPanel.tsx";
-import { History } from "./components/History.tsx";
 import { useTranslate } from "./hooks/useTranslate.ts";
-import { languages, sourceLangs } from "../translator/languages.ts";
 
 interface State {
   sourceText: string;

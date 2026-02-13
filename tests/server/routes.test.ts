@@ -20,6 +20,9 @@ beforeEach(() => {
   translateMock = mock(async () => ({ translatedText: "Hola", detectedSourceLang: "EN" }));
   getLanguagesMock = mock(async () => [{ language: "DE", name: "German" }]);
   getUsageMock = mock(async () => ({ character_count: 1, character_limit: 500000 }));
+  delete process.env.CONVEX_URL;
+  delete process.env.CLERK_PUBLISHABLE_KEY;
+  delete process.env.VITE_CLERK_PUBLISHABLE_KEY;
   mock.module("../../src/translator/translate.ts", () => ({
     translate: translateMock,
     getLanguages: getLanguagesMock,
@@ -90,5 +93,31 @@ describe("handleUsage", () => {
     getUsageMock.mockRejectedValue(new DeepLError(502, "Translation service unavailable"));
     const { handleUsage } = await loadRoutes();
     expect((await handleUsage()).status).toBe(502);
+  });
+});
+
+describe("handleConfig", () => {
+  test("returns 200 with convex and clerk keys", async () => {
+    process.env.CONVEX_URL = "https://example.convex.cloud";
+    process.env.CLERK_PUBLISHABLE_KEY = "pk_test_example";
+    const { handleConfig } = await loadRoutes();
+    const res = await handleConfig();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      convexUrl: "https://example.convex.cloud",
+      clerkPublishableKey: "pk_test_example",
+    });
+  });
+
+  test("falls back to VITE_CLERK_PUBLISHABLE_KEY", async () => {
+    process.env.CONVEX_URL = "https://example.convex.cloud";
+    process.env.VITE_CLERK_PUBLISHABLE_KEY = "pk_test_vite";
+    const { handleConfig } = await loadRoutes();
+    const res = await handleConfig();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      convexUrl: "https://example.convex.cloud",
+      clerkPublishableKey: "pk_test_vite",
+    });
   });
 });

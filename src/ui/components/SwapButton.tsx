@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowDataTransferHorizontalIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { useState } from "react";
 
 interface SwapButtonProps {
   onSwap: () => void;

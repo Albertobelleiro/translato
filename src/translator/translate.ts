@@ -5,7 +5,7 @@ import {
   type DeepLTranslateResult,
   type DeepLUsage,
   type TranslateResponse,
-} from "./types";
+} from "./types.ts";
 const BASE_URL = "https://api-free.deepl.com/v2";
 const authHeader = {
   Authorization: `DeepL-Auth-Key ${process.env.DEEPL_API_KEY}`,

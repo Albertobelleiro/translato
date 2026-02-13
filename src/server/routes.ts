@@ -1,7 +1,8 @@
-import { getLanguages, getUsage, translate } from "../translator/translate";
-import { DeepLError, type TranslateRequest } from "../translator/types";
+import { getLanguages, getUsage, translate } from "../translator/translate.ts";
+import { DeepLError, type TranslateRequest } from "../translator/types.ts";
 const MAX_TEXT_BYTES = 128 * 1024;
 let convexUrlCache: string | null | undefined;
+let clerkPublishableKeyCache: string | null | undefined;
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -62,8 +63,42 @@ async function resolveConvexUrl(): Promise<string | null> {
   }
 }
 
+async function resolveClerkPublishableKey(): Promise<string | null> {
+  if (clerkPublishableKeyCache !== undefined) return clerkPublishableKeyCache;
+
+  if (process.env.CLERK_PUBLISHABLE_KEY) {
+    clerkPublishableKeyCache = process.env.CLERK_PUBLISHABLE_KEY;
+    return clerkPublishableKeyCache;
+  }
+
+  if (process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+    clerkPublishableKeyCache = process.env.VITE_CLERK_PUBLISHABLE_KEY;
+    return clerkPublishableKeyCache;
+  }
+
+  try {
+    const envLocal = await Bun.file(".env.local").text();
+    const clerkMatch = envLocal.match(/^CLERK_PUBLISHABLE_KEY=(.+)$/m);
+    if (clerkMatch?.[1]) {
+      clerkPublishableKeyCache = clerkMatch[1].trim();
+      return clerkPublishableKeyCache;
+    }
+
+    const viteMatch = envLocal.match(/^VITE_CLERK_PUBLISHABLE_KEY=(.+)$/m);
+    clerkPublishableKeyCache = viteMatch?.[1]?.trim() ?? null;
+    return clerkPublishableKeyCache;
+  } catch {
+    clerkPublishableKeyCache = null;
+    return clerkPublishableKeyCache;
+  }
+}
+
 export async function handleConfig(): Promise<Response> {
-  const convexUrl = await resolveConvexUrl();
+  const [convexUrl, clerkPublishableKey] = await Promise.all([
+    resolveConvexUrl(),
+    resolveClerkPublishableKey(),
+  ]);
   if (!convexUrl) return errorResponse("Missing CONVEX_URL", 500);
-  return jsonResponse({ convexUrl });
+  if (!clerkPublishableKey) return errorResponse("Missing CLERK_PUBLISHABLE_KEY", 500);
+  return jsonResponse({ convexUrl, clerkPublishableKey });
 }
