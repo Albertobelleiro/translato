@@ -1,4 +1,17 @@
 
+## Project Structure (Screaming Architecture)
+
+Entry point: `bun --hot src/server/index.ts`
+
+```
+src/
+  translator/   Domain — language data, types, DeepL integration
+  server/       HTTP — Bun.serve(), API routes
+  ui/           Presentation — React components, hooks, styles
+docs/           Design system, techstack, TODO plans
+.ai/            AI agent rules (Cursor, Claude, etc.)
+```
+
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
