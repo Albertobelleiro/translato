@@ -1,6 +1,6 @@
 import { v } from "convex/values";
+import { makeFunctionReference } from "convex/server";
 import { MAX_TEXT_BYTES } from "../src/shared/constants.ts";
-import { api } from "./_generated/api";
 import { action } from "./_generated/server";
 import { requireUser } from "./helpers";
 import { mapDeepLError } from "./lib/errors";
@@ -8,6 +8,7 @@ import { mapDeepLError } from "./lib/errors";
 const DEEPL_URL = "https://api-free.deepl.com/v2/translate";
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 20;
+const statsRecordMutationRef = makeFunctionReference<"mutation">("stats:record");
 
 type RateLimitBucket = {
   count: number;
@@ -113,7 +114,7 @@ export const translate = action({
     const translatedText = first.text;
     const detectedSourceLang = first.detected_source_language;
 
-    await ctx.runMutation(api.stats.record, {
+    await ctx.runMutation(statsRecordMutationRef, {
       characterCount: args.text.length,
     });
 
