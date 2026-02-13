@@ -1,5 +1,14 @@
-import { describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { mapDeepLError } from "../../convex/lib/errors";
+
+const loadTranslatorModule = () => import(`../../convex/translator.ts?test=${crypto.randomUUID()}`);
+
+beforeEach(() => {
+  mock.restore();
+  process.env.DEEPL_API_KEY = "test-key";
+  process.env.INTERNAL_ALLOWED_EMAILS = "me@example.com";
+  delete process.env.INTERNAL_ALLOWED_DOMAINS;
+});
 
 describe("mapDeepLError", () => {
   test("maps 403 to invalid API key", () => {
@@ -20,5 +29,44 @@ describe("mapDeepLError", () => {
 
   test("maps unknown codes to generic failure", () => {
     expect(mapDeepLError(418)).toEqual({ status: 502, message: "Translation request failed" });
+  });
+});
+
+describe("translate action auth enforcement", () => {
+  test("rejects unauthenticated calls before contacting DeepL", async () => {
+    const { translate } = await loadTranslatorModule();
+    const fetchSpy = spyOn(globalThis, "fetch");
+
+    const ctx = {
+      auth: { getUserIdentity: async () => null },
+      runMutation: mock(async () => null),
+    } as never;
+
+    await expect((translate as { _handler: (ctx: unknown, args: unknown) => Promise<unknown> })._handler(ctx, {
+      text: "Hello",
+      targetLang: "ES",
+    })).rejects.toThrow("Not authenticated");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("calls DeepL and records usage for allowed users", async () => {
+    const { translate } = await loadTranslatorModule();
+    const fetchSpy = spyOn(globalThis, "fetch");
+    fetchSpy.mockResolvedValue(new Response(JSON.stringify({
+      translations: [{ text: "Hola", detected_source_language: "EN" }],
+    }), { status: 200 }));
+
+    const runMutation = mock(async () => null);
+    const ctx = {
+      auth: { getUserIdentity: async () => ({ tokenIdentifier: "user|1", email: "me@example.com" }) },
+      runMutation,
+    } as never;
+
+    await expect((translate as { _handler: (ctx: unknown, args: unknown) => Promise<unknown> })._handler(ctx, {
+      text: "Hello",
+      targetLang: "ES",
+    })).resolves.toEqual({ translatedText: "Hola", detectedSourceLang: "EN" });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(runMutation).toHaveBeenCalledTimes(1);
   });
 });

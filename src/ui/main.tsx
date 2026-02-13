@@ -1,7 +1,9 @@
 import { ClerkProvider, SignIn, SignOutButton, SignedIn, SignedOut, useAuth, useUser } from "@clerk/clerk-react";
-import { ConvexReactClient } from "convex/react";
+import { ConvexReactClient, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { api } from "../../convex/_generated/api";
 
 import { App } from "./App.tsx";
 import "./styles/app.css";
@@ -13,77 +15,80 @@ if (import.meta.hot) {
 type RuntimeConfig = {
   convexUrl?: string;
   clerkPublishableKey?: string;
-  internalAllowedEmails?: string[];
-  internalAllowedDomains?: string[];
 };
 
 type LoadedRuntimeConfig = {
   convexUrl: string;
   clerkPublishableKey: string;
-  internalAllowedEmails: string[];
-  internalAllowedDomains: string[];
+};
+
+type ConvexRuntimeBoundaryProps = {
+  children: ReactNode;
+};
+
+type ConvexRuntimeBoundaryState = {
+  message: string | null;
 };
 
 const clientEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
 
-function parseAllowList(value: string | undefined): string[] {
-  return (value ?? "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-}
+class ConvexRuntimeBoundary extends Component<ConvexRuntimeBoundaryProps, ConvexRuntimeBoundaryState> {
+  override state: ConvexRuntimeBoundaryState = { message: null };
 
-function isEmailAllowed(email: string, allowedEmails: string[], allowedDomains: string[]): boolean {
-  const normalized = email.toLowerCase();
-  if (allowedEmails.includes(normalized)) return true;
-  const domain = normalized.split("@")[1] ?? "";
-  return domain.length > 0 && allowedDomains.includes(domain);
+  static getDerivedStateFromError(error: unknown): ConvexRuntimeBoundaryState {
+    if (error instanceof Error && error.message.includes("Could not find public function for 'preferences:viewer'")) {
+      return { message: "Convex functions are out of sync. Run `bunx convex dev --once` and refresh." };
+    }
+    return { message: "Unexpected app error." };
+  }
+
+  override componentDidCatch(error: unknown, errorInfo: ErrorInfo): void {
+    console.error(error, errorInfo);
+  }
+
+  override render() {
+    if (!this.state.message) return this.props.children;
+
+    return (
+      <div style={{ maxWidth: 560, margin: "64px auto", padding: 24, background: "#1A1D21", border: "1px solid #2E3238", borderRadius: 12, color: "#EEEFF1" }}>
+        <h2 style={{ marginTop: 0, marginBottom: 8 }}>Configuration required</h2>
+        <p style={{ margin: 0, color: "#BFC4CC" }}>{this.state.message}</p>
+      </div>
+    );
+  }
 }
 
 async function loadRuntimeConfig(): Promise<LoadedRuntimeConfig> {
   let convexUrl = clientEnv?.CONVEX_URL;
   let clerkPublishableKey = clientEnv?.CLERK_PUBLISHABLE_KEY ?? clientEnv?.VITE_CLERK_PUBLISHABLE_KEY;
-  let internalAllowedEmails = parseAllowList(clientEnv?.INTERNAL_ALLOWED_EMAILS);
-  let internalAllowedDomains = parseAllowList(clientEnv?.INTERNAL_ALLOWED_DOMAINS);
 
-  if (!convexUrl || !clerkPublishableKey || (internalAllowedEmails.length === 0 && internalAllowedDomains.length === 0)) {
+  if (!convexUrl || !clerkPublishableKey) {
     const response = await fetch("/api/config");
     if (!response.ok) throw new Error("Unable to load runtime config from /api/config");
     const config = await response.json() as RuntimeConfig;
     convexUrl ??= config.convexUrl;
     clerkPublishableKey ??= config.clerkPublishableKey;
-    if (internalAllowedEmails.length === 0) internalAllowedEmails = config.internalAllowedEmails ?? [];
-    if (internalAllowedDomains.length === 0) internalAllowedDomains = config.internalAllowedDomains ?? [];
   }
 
   if (!convexUrl) throw new Error("Missing CONVEX_URL. Run `bunx convex dev` to configure it.");
   if (!clerkPublishableKey) throw new Error("Missing CLERK_PUBLISHABLE_KEY (or VITE_CLERK_PUBLISHABLE_KEY) in .env");
-  if (internalAllowedEmails.length === 0 && internalAllowedDomains.length === 0) {
-    throw new Error("Missing INTERNAL_ALLOWED_EMAILS or INTERNAL_ALLOWED_DOMAINS in env");
-  }
 
-  return { convexUrl, clerkPublishableKey, internalAllowedEmails, internalAllowedDomains };
+  return { convexUrl, clerkPublishableKey };
 }
 
-function InternalAccessGate({
-  convex,
-  internalAllowedEmails,
-  internalAllowedDomains,
-}: {
-  convex: ConvexReactClient;
-  internalAllowedEmails: string[];
-  internalAllowedDomains: string[];
-}) {
-  const { isLoaded, user } = useUser();
+function InternalAccessGate() {
+  const { isLoaded } = useUser();
+  const user = useQuery(api.preferences.viewer, isLoaded ? {} : "skip");
 
   if (!isLoaded) {
     return <div style={{ padding: 24, color: "#EEEFF1" }}>Checking access...</div>;
   }
 
-  const email = user?.primaryEmailAddress?.emailAddress;
-  const allowed = !!email && isEmailAllowed(email, internalAllowedEmails, internalAllowedDomains);
+  if (user === undefined) {
+    return <div style={{ padding: 24, color: "#EEEFF1" }}>Checking access...</div>;
+  }
 
-  if (!allowed) {
+  if (!user) {
     return (
       <div style={{ maxWidth: 560, margin: "64px auto", padding: 24, background: "#1A1D21", border: "1px solid #2E3238", borderRadius: 12, color: "#EEEFF1" }}>
         <h2 style={{ marginTop: 0, marginBottom: 8 }}>Access restricted</h2>
@@ -97,18 +102,14 @@ function InternalAccessGate({
     );
   }
 
-  return (
-    <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-      <App />
-    </ConvexProviderWithClerk>
-  );
+  return <App />;
 }
 
 const root = document.getElementById("root");
 async function boot(): Promise<void> {
   if (!root) return;
 
-  const { convexUrl, clerkPublishableKey, internalAllowedEmails, internalAllowedDomains } = await loadRuntimeConfig();
+  const { convexUrl, clerkPublishableKey } = await loadRuntimeConfig();
   const convex = new ConvexReactClient(convexUrl);
 
   createRoot(root).render(
@@ -131,11 +132,11 @@ async function boot(): Promise<void> {
         </div>
       </SignedOut>
       <SignedIn>
-        <InternalAccessGate
-          convex={convex}
-          internalAllowedEmails={internalAllowedEmails}
-          internalAllowedDomains={internalAllowedDomains}
-        />
+        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+          <ConvexRuntimeBoundary>
+            <InternalAccessGate />
+          </ConvexRuntimeBoundary>
+        </ConvexProviderWithClerk>
       </SignedIn>
     </ClerkProvider>,
   );

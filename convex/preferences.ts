@@ -15,6 +15,13 @@ export const get = query({
   },
 });
 
+export const viewer = query({
+  args: {},
+  handler: async (ctx) => {
+    return await getUser(ctx);
+  },
+});
+
 export const save = mutation({
   args: {
     sourceLang: v.string(),

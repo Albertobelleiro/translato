@@ -48,6 +48,14 @@ interface TranslateResult {
   forceTranslate: () => void;
 }
 
+type PendingTranslation = {
+  requestId: number;
+  text: string;
+  sourceLang?: string;
+  targetLang: string;
+  cacheKey: string;
+};
+
 export function useTranslate(
   sourceText: string,
   sourceLang: string,
@@ -57,15 +65,56 @@ export function useTranslate(
   const [detectedLang, setDetectedLang] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
+  const inFlightRef = useRef(false);
+  const pendingRef = useRef<PendingTranslation | null>(null);
   const translateAction = useAction(api.translator.translate);
 
+  const runPending = () => {
+    const request = pendingRef.current;
+    if (!request || inFlightRef.current) return;
+
+    pendingRef.current = null;
+    inFlightRef.current = true;
+
+    translateAction({
+      text: request.text,
+      sourceLang: request.sourceLang,
+      targetLang: request.targetLang,
+    })
+      .then((data) => {
+        if (request.requestId !== requestIdRef.current) return;
+        setCachedTranslation(request.cacheKey, data.translatedText, data.detectedSourceLang);
+        setTranslatedText(data.translatedText);
+        setDetectedLang(data.detectedSourceLang);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (request.requestId !== requestIdRef.current) return;
+        const message = err instanceof Error ? err.message : "Translation failed";
+        setError(message);
+      })
+      .finally(() => {
+        inFlightRef.current = false;
+        if (pendingRef.current) {
+          runPending();
+          return;
+        }
+        if (request.requestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
+      });
+  };
+
   const doTranslate = (text: string) => {
+    const requestId = ++requestIdRef.current;
+
     if (!text.trim() || !targetLang) {
+      pendingRef.current = null;
       setTranslatedText("");
       setDetectedLang("");
+      setIsLoading(false);
       setError(null);
       return;
     }
@@ -73,8 +122,7 @@ export function useTranslate(
     const cacheKey = getCacheKey(text, sourceLang, targetLang);
     const cached = getCachedTranslation(cacheKey);
     if (cached) {
-      abortRef.current?.abort();
-      requestIdRef.current += 1;
+      pendingRef.current = null;
       setTranslatedText(cached.translatedText);
       setDetectedLang(cached.detectedLang);
       setIsLoading(false);
@@ -82,39 +130,26 @@ export function useTranslate(
       return;
     }
 
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const requestId = ++requestIdRef.current;
     setIsLoading(true);
     setError(null);
 
-    translateAction({
+    pendingRef.current = {
+      requestId,
       text,
       sourceLang: sourceLang || undefined,
       targetLang,
-    })
-      .then((data) => {
-        if (controller.signal.aborted || requestId !== requestIdRef.current) return;
-        setCachedTranslation(cacheKey, data.translatedText, data.detectedSourceLang);
-        setTranslatedText(data.translatedText);
-        setDetectedLang(data.detectedSourceLang);
-        setIsLoading(false);
-      })
-      .catch((err: unknown) => {
-        if (controller.signal.aborted || requestId !== requestIdRef.current) return;
-        const message = err instanceof Error ? err.message : "Translation failed";
-        setError(message);
-        setIsLoading(false);
-      });
+      cacheKey,
+    };
+
+    runPending();
   };
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
 
     if (!sourceText.trim()) {
-      abortRef.current?.abort();
-      abortRef.current = null;
+      requestIdRef.current += 1;
+      pendingRef.current = null;
       setTranslatedText("");
       setDetectedLang("");
       setIsLoading(false);

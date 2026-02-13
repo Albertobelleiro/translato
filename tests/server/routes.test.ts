@@ -13,8 +13,6 @@ beforeEach(() => {
   delete process.env.CONVEX_URL;
   delete process.env.CLERK_PUBLISHABLE_KEY;
   delete process.env.VITE_CLERK_PUBLISHABLE_KEY;
-  delete process.env.INTERNAL_ALLOWED_EMAILS;
-  delete process.env.INTERNAL_ALLOWED_DOMAINS;
   spyOn(Bun, "file").mockReturnValue({ text: async () => "" } as never);
   mock.module("../../src/translator/translate.ts", () => ({
     getLanguages: getLanguagesMock,
@@ -57,33 +55,20 @@ describe("handleConfig", () => {
   test("returns 200 with runtime config values", async () => {
     process.env.CONVEX_URL = "https://example.convex.cloud";
     process.env.CLERK_PUBLISHABLE_KEY = "pk_test_example";
-    process.env.INTERNAL_ALLOWED_EMAILS = "me@example.com";
     const { handleConfig } = await loadRoutes();
     const res = await handleConfig();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       convexUrl: "https://example.convex.cloud",
       clerkPublishableKey: "pk_test_example",
-      internalAllowedEmails: ["me@example.com"],
-      internalAllowedDomains: [],
     });
   });
 
   test("returns 500 when CONVEX_URL is missing", async () => {
     process.env.CLERK_PUBLISHABLE_KEY = "pk_test_example";
-    process.env.INTERNAL_ALLOWED_EMAILS = "me@example.com";
     const { handleConfig } = await loadRoutes();
     const res = await handleConfig();
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "Missing CONVEX_URL" });
-  });
-
-  test("returns 500 when allowlist is missing", async () => {
-    process.env.CONVEX_URL = "https://example.convex.cloud";
-    process.env.CLERK_PUBLISHABLE_KEY = "pk_test_example";
-    const { handleConfig } = await loadRoutes();
-    const res = await handleConfig();
-    expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ error: "Missing INTERNAL_ALLOWED_EMAILS or INTERNAL_ALLOWED_DOMAINS" });
   });
 });

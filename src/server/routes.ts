@@ -2,8 +2,6 @@ import { getLanguages, getUsage } from "../translator/translate.ts";
 import { DeepLError } from "../translator/types.ts";
 let convexUrlCache: string | null | undefined;
 let clerkPublishableKeyCache: string | null | undefined;
-let internalAllowedEmailsCache: string[] | undefined;
-let internalAllowedDomainsCache: string[] | undefined;
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -76,69 +74,13 @@ async function resolveClerkPublishableKey(): Promise<string | null> {
   }
 }
 
-function parseAllowList(value: string | undefined): string[] {
-  return (value ?? "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function parseAllowListFromEnvFile(envLocal: string, key: string): string[] {
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = envLocal.match(new RegExp(`^${escapedKey}=(.+)$`, "m"));
-  return parseAllowList(match?.[1]?.trim());
-}
-
-async function resolveInternalAllowedEmails(): Promise<string[]> {
-  if (internalAllowedEmailsCache !== undefined) return internalAllowedEmailsCache;
-
-  const fromEnv = parseAllowList(process.env.INTERNAL_ALLOWED_EMAILS);
-  if (fromEnv.length > 0) {
-    internalAllowedEmailsCache = fromEnv;
-    return internalAllowedEmailsCache;
-  }
-
-  try {
-    const envLocal = await Bun.file(".env.local").text();
-    internalAllowedEmailsCache = parseAllowListFromEnvFile(envLocal, "INTERNAL_ALLOWED_EMAILS");
-    return internalAllowedEmailsCache;
-  } catch {
-    internalAllowedEmailsCache = [];
-    return internalAllowedEmailsCache;
-  }
-}
-
-async function resolveInternalAllowedDomains(): Promise<string[]> {
-  if (internalAllowedDomainsCache !== undefined) return internalAllowedDomainsCache;
-
-  const fromEnv = parseAllowList(process.env.INTERNAL_ALLOWED_DOMAINS);
-  if (fromEnv.length > 0) {
-    internalAllowedDomainsCache = fromEnv;
-    return internalAllowedDomainsCache;
-  }
-
-  try {
-    const envLocal = await Bun.file(".env.local").text();
-    internalAllowedDomainsCache = parseAllowListFromEnvFile(envLocal, "INTERNAL_ALLOWED_DOMAINS");
-    return internalAllowedDomainsCache;
-  } catch {
-    internalAllowedDomainsCache = [];
-    return internalAllowedDomainsCache;
-  }
-}
-
 export async function handleConfig(): Promise<Response> {
-  const [convexUrl, clerkPublishableKey, internalAllowedEmails, internalAllowedDomains] = await Promise.all([
+  const [convexUrl, clerkPublishableKey] = await Promise.all([
     resolveConvexUrl(),
     resolveClerkPublishableKey(),
-    resolveInternalAllowedEmails(),
-    resolveInternalAllowedDomains(),
   ]);
   if (!convexUrl) return errorResponse("Missing CONVEX_URL", 500);
   if (!clerkPublishableKey) return errorResponse("Missing CLERK_PUBLISHABLE_KEY", 500);
-  if (internalAllowedEmails.length === 0 && internalAllowedDomains.length === 0) {
-    return errorResponse("Missing INTERNAL_ALLOWED_EMAILS or INTERNAL_ALLOWED_DOMAINS", 500);
-  }
 
-  return jsonResponse({ convexUrl, clerkPublishableKey, internalAllowedEmails, internalAllowedDomains });
+  return jsonResponse({ convexUrl, clerkPublishableKey });
 }

@@ -16,6 +16,8 @@ export const translate = action({
     if (!args.text.trim()) throw new Error("Text must not be empty");
     if (new TextEncoder().encode(args.text).length >= 128 * 1024) throw new Error("Text exceeds 128 KiB limit");
 
+    await requireUser(ctx);
+
     const body: {
       text: string[];
       target_lang: string;
@@ -58,8 +60,6 @@ export const translate = action({
     const first = data.translations[0];
     const translatedText = first?.text ?? "";
     const detectedSourceLang = first?.detected_source_language ?? "";
-
-    await requireUser(ctx);
 
     await ctx.runMutation(api.stats.record, {
       characterCount: args.text.length,
