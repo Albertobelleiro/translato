@@ -35,7 +35,7 @@ describe("loadPublicRuntimeConfig", () => {
   test("throws when VITE_CONVEX_URL is missing", async () => {
     process.env.VITE_CLERK_PUBLISHABLE_KEY = "pk_test_abc123";
     const { loadPublicRuntimeConfig } = await loadRuntimeConfigModule();
-    expect(() => loadPublicRuntimeConfig()).toThrow("Missing VITE_CONVEX_URL");
+    expect(() => loadPublicRuntimeConfig()).toThrow("__NEEDS_SERVER_CONFIG__");
   });
 
   test("throws when VITE_CONVEX_URL is not https", async () => {
