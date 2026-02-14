@@ -39,6 +39,12 @@ beforeEach(() => {
       return true;
     },
   });
+
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    writable: true,
+    value: { userAgent: "Mozilla/5.0", brave: undefined },
+  });
 });
 
 describe("authDiagnostics", () => {
@@ -84,10 +90,13 @@ describe("authDiagnostics", () => {
     Object.defineProperty(globalThis, "navigator", {
       configurable: true,
       writable: true,
-      value: { userAgent: "Mozilla/5.0 Brave/1.75.1" },
+      value: {
+        userAgent: "Mozilla/5.0",
+        brave: { isBrave: async () => true },
+      },
     });
     const { getAuthCompatibilitySteps } = await loadModule();
-    const steps = getAuthCompatibilitySteps();
+    const steps = await getAuthCompatibilitySteps();
 
     expect(steps[0]).toContain("Brave Shields");
   });

@@ -198,8 +198,12 @@ async function resolveClerkPublishableKey(): Promise<string | null> {
 function resolveEnableVercelAnalytics(): boolean {
   if (enableVercelAnalyticsCache !== undefined) return enableVercelAnalyticsCache;
 
-  enableVercelAnalyticsCache = parseBooleanEnv(process.env.ENABLE_VERCEL_ANALYTICS)
-    || parseBooleanEnv(process.env.VITE_ENABLE_VERCEL_ANALYTICS);
+  if (process.env.ENABLE_VERCEL_ANALYTICS !== undefined) {
+    enableVercelAnalyticsCache = parseBooleanEnv(process.env.ENABLE_VERCEL_ANALYTICS);
+    return enableVercelAnalyticsCache;
+  }
+
+  enableVercelAnalyticsCache = parseBooleanEnv(process.env.VITE_ENABLE_VERCEL_ANALYTICS);
   return enableVercelAnalyticsCache;
 }
 

@@ -2,7 +2,7 @@ import { ClerkProvider, SignIn, SignOutButton, SignedIn, SignedOut, useAuth, use
 import { Analytics } from "@vercel/analytics/react";
 import { ConvexReactClient, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode, useEffect, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { api } from "../../convex/_generated/api";
 
@@ -92,7 +92,19 @@ type AuthCompatibilityFallbackProps = {
 };
 
 function AuthCompatibilityFallback({ diagnostic }: AuthCompatibilityFallbackProps) {
-  const steps = getAuthCompatibilitySteps();
+  const [steps, setSteps] = useState<string[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    void getAuthCompatibilitySteps().then((resolvedSteps) => {
+      if (active) setSteps(resolvedSteps);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div style={{ maxWidth: 700, margin: "64px auto", padding: 24, background: "#1A1D21", border: "1px solid #2E3238", borderRadius: 12, color: "#EEEFF1" }}>

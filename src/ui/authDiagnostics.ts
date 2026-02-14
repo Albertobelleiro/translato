@@ -60,7 +60,13 @@ function detectDiagnostic(raw: unknown): AuthDiagnostic | null {
   return parseClerkError(text) ?? parseCspWorkerError(text);
 }
 
-export function getAuthCompatibilitySteps(): string[] {
+type BraveNavigator = Navigator & {
+  brave?: {
+    isBrave?: () => Promise<boolean>;
+  };
+};
+
+export async function getAuthCompatibilitySteps(): Promise<string[]> {
   const userAgent = typeof navigator !== "undefined" ? navigator.userAgent.toLowerCase() : "";
   const steps = [
     "Hard refresh the page (Cmd/Ctrl + Shift + R).",
@@ -68,11 +74,14 @@ export function getAuthCompatibilitySteps(): string[] {
     "Clear site data (cookies + cache) for translato.ai-wave.co and retry.",
   ];
 
-  if (userAgent.includes("brave")) {
+  const braveNavigator = typeof navigator !== "undefined" ? (navigator as BraveNavigator) : undefined;
+  const isBrave = await braveNavigator?.brave?.isBrave?.().catch(() => false) ?? false;
+
+  if (isBrave) {
     steps.unshift("In Brave Shields, allow scripts and third-party cookies for this site.");
   } else if (userAgent.includes("firefox")) {
     steps.unshift("In Firefox Enhanced Tracking Protection, disable strict blocking for this site.");
-  } else if (userAgent.includes("safari")) {
+  } else if (userAgent.includes("safari") && !userAgent.includes("chrome") && !userAgent.includes("crios")) {
     steps.unshift("In Safari, disable content blockers for this site and retry.");
   }
 

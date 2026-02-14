@@ -281,6 +281,7 @@ describe("Unit - ui/main bootstrap", () => {
     await loadMain();
     await flushBoot();
     expect(countElementsByType(disabledHarness.getRenderedTree(), disabledHarness.components.Analytics)).toBe(0);
+    mock.restore();
 
     const enabledHarness = setupHarness({ enableVercelAnalytics: "true" });
     await loadMain();
