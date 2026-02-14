@@ -18,6 +18,8 @@ beforeEach(() => {
   delete process.env.CONVEX_URL;
   delete process.env.CLERK_PUBLISHABLE_KEY;
   delete process.env.VITE_CLERK_PUBLISHABLE_KEY;
+  delete process.env.ENABLE_VERCEL_ANALYTICS;
+  delete process.env.VITE_ENABLE_VERCEL_ANALYTICS;
   process.env.CORS_ALLOWED_ORIGINS = "https://app.example.com,http://localhost:5173";
   spyOn(Bun, "file").mockReturnValue({ text: async () => "" } as never);
   mock.module("../../src/translator/translate.ts", () => ({
@@ -187,6 +189,21 @@ describe("handleConfig", () => {
     expect(await res.json()).toEqual({
       convexUrl: "https://example.convex.cloud",
       clerkPublishableKey: "pk_test_example",
+      enableVercelAnalytics: false,
+    });
+  });
+
+  test("returns enableVercelAnalytics=true when env flag is enabled", async () => {
+    process.env.CONVEX_URL = "https://example.convex.cloud";
+    process.env.CLERK_PUBLISHABLE_KEY = "pk_test_example";
+    process.env.ENABLE_VERCEL_ANALYTICS = "true";
+    const { handleConfig } = await loadRoutes();
+    const res = await handleConfig();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      convexUrl: "https://example.convex.cloud",
+      clerkPublishableKey: "pk_test_example",
+      enableVercelAnalytics: true,
     });
   });
 
@@ -208,6 +225,7 @@ describe("handleConfig", () => {
     expect(await res.json()).toEqual({
       convexUrl: "https://example.convex.cloud",
       clerkPublishableKey: "pk_test_example",
+      enableVercelAnalytics: false,
     });
   });
 });

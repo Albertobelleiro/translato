@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
-
 type MockRoot = {
   render: ReturnType<typeof mock>;
   unmount: ReturnType<typeof mock>;
@@ -9,13 +8,16 @@ type Harness = {
   createRootMock: ReturnType<typeof mock>;
   convexCtorMock: ReturnType<typeof mock>;
   initThemeMock: ReturnType<typeof mock>;
+  locationReloadMock: ReturnType<typeof mock>;
   roots: MockRoot[];
   components: {
+    Analytics: () => unknown;
     ClerkProvider: (props: { children?: unknown }) => unknown;
     SignedIn: (props: { children?: unknown }) => unknown;
     SignedOut: (props: { children?: unknown }) => unknown;
     ConvexProviderWithClerk: (props: { children?: unknown }) => unknown;
   };
+  getListenerCount: (type: string) => number;
   setContainer: (container: HTMLElement & { textContent: string }) => void;
   getContainer: () => HTMLElement & { textContent: string };
   getRenderedTree: () => unknown;
@@ -25,6 +27,7 @@ const HMR_ROOT_KEY = "__TRANSLATO_REACT_ROOT__";
 const HMR_CONTAINER_KEY = "__TRANSLATO_REACT_CONTAINER__";
 const HMR_CONVEX_CLIENT_KEY = "__TRANSLATO_CONVEX_CLIENT__";
 const HMR_CONVEX_URL_KEY = "__TRANSLATO_CONVEX_URL__";
+const HMR_DIAGNOSTICS_CLEANUP_KEY = "__TRANSLATO_AUTH_DIAGNOSTICS_CLEANUP__";
 
 const loadMain = () => import(`../../src/ui/main.tsx?test=${crypto.randomUUID()}`);
 
@@ -37,6 +40,7 @@ function clearHmrGlobals(): void {
   delete (globalThis as Record<string, unknown>)[HMR_CONTAINER_KEY];
   delete (globalThis as Record<string, unknown>)[HMR_CONVEX_CLIENT_KEY];
   delete (globalThis as Record<string, unknown>)[HMR_CONVEX_URL_KEY];
+  delete (globalThis as Record<string, unknown>)[HMR_DIAGNOSTICS_CLEANUP_KEY];
 }
 
 function countElementsByType(node: unknown, targetType: unknown): number {
@@ -76,16 +80,50 @@ function findElementByType(node: unknown, targetType: unknown): { props?: Record
   return findElementByType(children, targetType);
 }
 
+function treeIncludesText(node: unknown, text: string): boolean {
+  if (typeof node === "string") return node.includes(text);
+  if (!node || typeof node !== "object") return false;
+
+  const element = node as { props?: { children?: unknown } };
+  const children = element.props?.children;
+  if (Array.isArray(children)) {
+    return children.some((child) => treeIncludesText(child, text));
+  }
+
+  return treeIncludesText(children, text);
+}
+
+function findFirstButtonProps(node: unknown): Record<string, unknown> | null {
+  if (!node || typeof node !== "object") return null;
+
+  const element = node as { type?: unknown; props?: Record<string, unknown> & { children?: unknown } };
+  if (element.type === "button") {
+    return element.props ?? null;
+  }
+
+  const children = element.props?.children;
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      const found = findFirstButtonProps(child);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  return findFirstButtonProps(children);
+}
+
 async function flushBoot(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function setupHarness(options: { convexUrl?: string; clerkPublishableKey?: string } = {}): Harness {
+function setupHarness(options: { convexUrl?: string; clerkPublishableKey?: string; enableVercelAnalytics?: string } = {}): Harness {
   clearHmrGlobals();
   process.env.VITE_CONVEX_URL = options.convexUrl ?? "https://dev.convex.cloud";
   process.env.VITE_CLERK_PUBLISHABLE_KEY = options.clerkPublishableKey ?? "pk_test_default";
+  process.env.VITE_ENABLE_VERCEL_ANALYTICS = options.enableVercelAnalytics ?? "false";
   spyOn(console, "error").mockImplementation(() => undefined as never);
 
   let currentContainer = createContainer();
@@ -94,6 +132,45 @@ function setupHarness(options: { convexUrl?: string; clerkPublishableKey?: strin
     writable: true,
     value: {
       getElementById: mock((id: string) => (id === "root" ? currentContainer : null)),
+    },
+  });
+
+  const locationReloadMock = mock(() => undefined);
+  Object.defineProperty(globalThis, "location", {
+    configurable: true,
+    writable: true,
+    value: {
+      reload: locationReloadMock,
+    },
+  });
+
+  const listeners = new Map<string, Set<EventListener>>();
+  Object.defineProperty(globalThis, "addEventListener", {
+    configurable: true,
+    writable: true,
+    value: (type: string, listener: EventListener) => {
+      const bucket = listeners.get(type) ?? new Set<EventListener>();
+      bucket.add(listener);
+      listeners.set(type, bucket);
+    },
+  });
+  Object.defineProperty(globalThis, "removeEventListener", {
+    configurable: true,
+    writable: true,
+    value: (type: string, listener: EventListener) => {
+      listeners.get(type)?.delete(listener);
+    },
+  });
+  Object.defineProperty(globalThis, "dispatchEvent", {
+    configurable: true,
+    writable: true,
+    value: (event: Event) => {
+      const bucket = listeners.get(event.type);
+      if (!bucket) return true;
+      for (const listener of bucket) {
+        listener(event);
+      }
+      return true;
     },
   });
 
@@ -115,6 +192,7 @@ function setupHarness(options: { convexUrl?: string; clerkPublishableKey?: strin
     }
   }
 
+  const Analytics = () => null;
   const ClerkProvider = (props: { children?: unknown }) => props.children ?? null;
   const SignedIn = (props: { children?: unknown }) => props.children ?? null;
   const SignedOut = (props: { children?: unknown }) => props.children ?? null;
@@ -127,7 +205,7 @@ function setupHarness(options: { convexUrl?: string; clerkPublishableKey?: strin
   mock.module("../../src/ui/App.tsx", () => ({ App: () => null }));
   mock.module("../../src/ui/hooks/useTheme.ts", () => ({ initTheme: initThemeMock }));
   mock.module("../../convex/_generated/api", () => ({ api: { preferences: { viewer: "preferences:viewer" } } }));
-  mock.module("@vercel/analytics/react", () => ({ Analytics: () => null }));
+  mock.module("@vercel/analytics/react", () => ({ Analytics }));
   mock.module("@clerk/clerk-react", () => ({
     ClerkProvider,
     SignIn: () => null,
@@ -142,18 +220,20 @@ function setupHarness(options: { convexUrl?: string; clerkPublishableKey?: strin
     useQuery: () => null,
   }));
   mock.module("convex/react-clerk", () => ({ ConvexProviderWithClerk }));
-
   return {
     createRootMock,
     convexCtorMock,
     initThemeMock,
+    locationReloadMock,
     roots,
     components: {
+      Analytics,
       ClerkProvider,
       SignedIn,
       SignedOut,
       ConvexProviderWithClerk,
     },
+    getListenerCount: (type) => listeners.get(type)?.size ?? 0,
     setContainer: (container) => {
       currentContainer = container;
     },
@@ -194,6 +274,19 @@ describe("Unit - ui/main bootstrap", () => {
     const clerkNode = findElementByType(tree, harness.components.ClerkProvider);
     expect(clerkNode?.props?.publishableKey).toBe("pk_test_runtime_key");
     expect(harness.initThemeMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("renders Analytics only when enabled", async () => {
+    const disabledHarness = setupHarness({ enableVercelAnalytics: "false" });
+    await loadMain();
+    await flushBoot();
+    expect(countElementsByType(disabledHarness.getRenderedTree(), disabledHarness.components.Analytics)).toBe(0);
+    mock.restore();
+
+    const enabledHarness = setupHarness({ enableVercelAnalytics: "true" });
+    await loadMain();
+    await flushBoot();
+    expect(countElementsByType(enabledHarness.getRenderedTree(), enabledHarness.components.Analytics)).toBe(1);
   });
 });
 
@@ -260,6 +353,17 @@ describe("E2E - full boot flow", () => {
     expect(countElementsByType(tree, harness.components.SignedIn)).toBe(1);
     expect(countElementsByType(tree, harness.components.SignedOut)).toBe(1);
     expect(countElementsByType(tree, harness.components.ConvexProviderWithClerk)).toBe(1);
+  });
+
+  test("installs auth diagnostics listeners during boot", async () => {
+    const harness = setupHarness();
+
+    await loadMain();
+    await flushBoot();
+
+    expect(harness.getListenerCount("error")).toBe(1);
+    expect(harness.getListenerCount("unhandledrejection")).toBe(1);
+    expect(harness.getListenerCount("securitypolicyviolation")).toBe(1);
   });
 
   test("writes readable boot error to root container when runtime config fails", async () => {

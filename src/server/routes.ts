@@ -10,6 +10,7 @@ import type { TranslateRequest } from "../translator/types.ts";
 
 let convexUrlCache: string | null | undefined;
 let clerkPublishableKeyCache: string | null | undefined;
+let enableVercelAnalyticsCache: boolean | undefined;
 
 const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
 const configuredAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
@@ -67,6 +68,12 @@ export function handleOptions(req?: Request): Response {
 
 function stripEnvValue(value: string): string {
   return value.trim().replace(/^["']|["']$/g, "");
+}
+
+function parseBooleanEnv(value: string | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 }
 
 export async function handleTranslate(req: Request): Promise<Response> {
@@ -188,13 +195,26 @@ async function resolveClerkPublishableKey(): Promise<string | null> {
   }
 }
 
+function resolveEnableVercelAnalytics(): boolean {
+  if (enableVercelAnalyticsCache !== undefined) return enableVercelAnalyticsCache;
+
+  if (process.env.ENABLE_VERCEL_ANALYTICS !== undefined) {
+    enableVercelAnalyticsCache = parseBooleanEnv(process.env.ENABLE_VERCEL_ANALYTICS);
+    return enableVercelAnalyticsCache;
+  }
+
+  enableVercelAnalyticsCache = parseBooleanEnv(process.env.VITE_ENABLE_VERCEL_ANALYTICS);
+  return enableVercelAnalyticsCache;
+}
+
 export async function handleConfig(req?: Request): Promise<Response> {
   const [convexUrl, clerkPublishableKey] = await Promise.all([
     resolveConvexUrl(),
     resolveClerkPublishableKey(),
   ]);
+  const enableVercelAnalytics = resolveEnableVercelAnalytics();
   if (!convexUrl) return errorResponse(req, "Missing CONVEX_URL", 500);
   if (!clerkPublishableKey) return errorResponse(req, "Missing CLERK_PUBLISHABLE_KEY", 500);
 
-  return jsonResponse(req, { convexUrl, clerkPublishableKey });
+  return jsonResponse(req, { convexUrl, clerkPublishableKey, enableVercelAnalytics });
 }

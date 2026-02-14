@@ -1,6 +1,7 @@
 export type PublicRuntimeConfig = {
   convexUrl: string;
   clerkPublishableKey: string;
+  enableVercelAnalytics: boolean;
 };
 
 type ProcessWithEnv = {
@@ -33,6 +34,14 @@ function readEnv(key: string): string | undefined {
   }
 
   return readClientEnv(key) ?? readProcessEnv(key);
+}
+
+function readBooleanEnv(key: string): boolean {
+  const value = readEnv(key);
+  if (!value) return false;
+
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 }
 
 function requireEnv(key: string, helpText: string): string {
@@ -68,11 +77,13 @@ function validateClerkKey(value: string): string {
 export function loadPublicRuntimeConfig(): PublicRuntimeConfig {
   const convexUrl = readEnv("VITE_CONVEX_URL");
   const clerkPublishableKey = readEnv("VITE_CLERK_PUBLISHABLE_KEY");
+  const enableVercelAnalytics = readBooleanEnv("VITE_ENABLE_VERCEL_ANALYTICS");
 
   if (convexUrl && clerkPublishableKey) {
     return {
       convexUrl: validateConvexUrl(convexUrl),
       clerkPublishableKey: validateClerkKey(clerkPublishableKey),
+      enableVercelAnalytics,
     };
   }
 
@@ -91,13 +102,18 @@ export async function loadPublicRuntimeConfigAsync(): Promise<PublicRuntimeConfi
       throw new Error("Missing VITE_CONVEX_URL. Set it in .env.local for development and in Vercel for deployments.");
     }
     if (!res.ok) throw new Error(`Failed to load config from server: ${res.status}`);
-    const data = (await res.json()) as { convexUrl?: string; clerkPublishableKey?: string };
+    const data = (await res.json()) as {
+      convexUrl?: string;
+      clerkPublishableKey?: string;
+      enableVercelAnalytics?: boolean;
+    };
     if (!data.convexUrl || !data.clerkPublishableKey) {
       throw new Error("Server config missing convexUrl or clerkPublishableKey");
     }
     return {
       convexUrl: validateConvexUrl(data.convexUrl),
       clerkPublishableKey: validateClerkKey(data.clerkPublishableKey),
+      enableVercelAnalytics: data.enableVercelAnalytics === true,
     };
   }
 }

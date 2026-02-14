@@ -5,8 +5,10 @@ const loadRuntimeConfigModule = () => import(`../../src/ui/runtimeConfig.ts?test
 beforeEach(() => {
   delete process.env.VITE_CONVEX_URL;
   delete process.env.VITE_CLERK_PUBLISHABLE_KEY;
+  delete process.env.VITE_ENABLE_VERCEL_ANALYTICS;
   delete process.env.CONVEX_URL;
   delete process.env.CLERK_PUBLISHABLE_KEY;
+  delete process.env.ENABLE_VERCEL_ANALYTICS;
 });
 
 describe("loadPublicRuntimeConfig", () => {
@@ -18,6 +20,7 @@ describe("loadPublicRuntimeConfig", () => {
     expect(loadPublicRuntimeConfig()).toEqual({
       convexUrl: "https://example.convex.cloud",
       clerkPublishableKey: "pk_test_abc123",
+      enableVercelAnalytics: false,
     });
   });
 
@@ -29,6 +32,20 @@ describe("loadPublicRuntimeConfig", () => {
     expect(loadPublicRuntimeConfig()).toEqual({
       convexUrl: "https://legacy.convex.cloud",
       clerkPublishableKey: "pk_test_legacy",
+      enableVercelAnalytics: false,
+    });
+  });
+
+  test("parses VITE_ENABLE_VERCEL_ANALYTICS boolean flag", async () => {
+    process.env.VITE_CONVEX_URL = "https://example.convex.cloud";
+    process.env.VITE_CLERK_PUBLISHABLE_KEY = "pk_test_abc123";
+    process.env.VITE_ENABLE_VERCEL_ANALYTICS = "true";
+    const { loadPublicRuntimeConfig } = await loadRuntimeConfigModule();
+
+    expect(loadPublicRuntimeConfig()).toEqual({
+      convexUrl: "https://example.convex.cloud",
+      clerkPublishableKey: "pk_test_abc123",
+      enableVercelAnalytics: true,
     });
   });
 
