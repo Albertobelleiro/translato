@@ -6,6 +6,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { api } from "../../convex/_generated/api";
 
+import { installAuthDiagnostics, type AuthDiagnostic, getAuthCompatibilitySteps } from "./authDiagnostics.ts";
 import { App } from "./App.tsx";
 import { initTheme } from "./hooks/useTheme.ts";
 import { loadPublicRuntimeConfigAsync } from "./runtimeConfig.ts";
@@ -28,6 +29,7 @@ type HmrGlobals = {
   __TRANSLATO_REACT_CONTAINER__?: HTMLElement;
   __TRANSLATO_CONVEX_CLIENT__?: ConvexReactClient;
   __TRANSLATO_CONVEX_URL__?: string;
+  __TRANSLATO_AUTH_DIAGNOSTICS_CLEANUP__?: (() => void) | null;
 };
 
 class ConvexRuntimeBoundary extends Component<ConvexRuntimeBoundaryProps, ConvexRuntimeBoundaryState> {
@@ -85,6 +87,43 @@ function InternalAccessGate() {
   return <App />;
 }
 
+type AuthCompatibilityFallbackProps = {
+  diagnostic: AuthDiagnostic;
+};
+
+function AuthCompatibilityFallback({ diagnostic }: AuthCompatibilityFallbackProps) {
+  const steps = getAuthCompatibilitySteps();
+
+  return (
+    <div style={{ maxWidth: 700, margin: "64px auto", padding: 24, background: "#1A1D21", border: "1px solid #2E3238", borderRadius: 12, color: "#EEEFF1" }}>
+      <h2 style={{ marginTop: 0, marginBottom: 8 }}>Browser compatibility check required</h2>
+      <p style={{ margin: 0, color: "#BFC4CC" }}>
+        {diagnostic.message} The sign-in flow could not complete in this browser context.
+      </p>
+      <p style={{ marginTop: 12, marginBottom: 4, color: "#9CA3AF", fontSize: 12 }}>Error code: {diagnostic.code}</p>
+      <p style={{ marginTop: 0, color: "#9CA3AF", fontSize: 12, wordBreak: "break-word" }}>{diagnostic.detail}</p>
+      <ul style={{ marginTop: 12, marginBottom: 0, paddingLeft: 20, color: "#D1D5DB" }}>
+        {steps.map((step) => (
+          <li key={step} style={{ marginBottom: 6 }}>{step}</li>
+        ))}
+      </ul>
+      <div style={{ marginTop: 16 }}>
+        <button
+          type="button"
+          className="auth-btn"
+          onClick={() => {
+            if (typeof location !== "undefined") {
+              location.reload();
+            }
+          }}
+        >
+          Retry sign-in
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function getHmrGlobals(): typeof globalThis & HmrGlobals {
   return globalThis as typeof globalThis & HmrGlobals;
 }
@@ -116,6 +155,54 @@ function getOrCreateConvexClient(convexUrl: string): ConvexReactClient {
   return hmrGlobals.__TRANSLATO_CONVEX_CLIENT__;
 }
 
+function renderAuthCompatibilityFallback(reactRoot: Root, diagnostic: AuthDiagnostic): void {
+  reactRoot.render(<AuthCompatibilityFallback diagnostic={diagnostic} />);
+}
+
+function renderMainApp(reactRoot: Root, convexClient: ConvexReactClient, clerkPublishableKey: string, enableVercelAnalytics: boolean): void {
+  reactRoot.render(
+    <>
+      {enableVercelAnalytics ? <Analytics /> : null}
+      <ClerkProvider
+        publishableKey={clerkPublishableKey}
+        appearance={{
+          variables: {
+            colorPrimary: "#4D76FF",
+            colorBackground: "#1A1D21",
+            colorText: "#EEEFF1",
+            colorInputBackground: "#242529",
+            colorInputText: "#EEEFF1",
+            borderRadius: "10px",
+          },
+        }}
+      >
+        <SignedOut>
+          <div style={{ maxWidth: 460, margin: "40px auto" }}>
+            <SignIn />
+          </div>
+        </SignedOut>
+        <SignedIn>
+          <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
+            <ConvexRuntimeBoundary>
+              <InternalAccessGate />
+            </ConvexRuntimeBoundary>
+          </ConvexProviderWithClerk>
+        </SignedIn>
+      </ClerkProvider>
+    </>,
+  );
+}
+
+function setupAuthDiagnostics(reactRoot: Root): void {
+  const hmrGlobals = getHmrGlobals();
+  hmrGlobals.__TRANSLATO_AUTH_DIAGNOSTICS_CLEANUP__?.();
+
+  hmrGlobals.__TRANSLATO_AUTH_DIAGNOSTICS_CLEANUP__ = installAuthDiagnostics((diagnostic) => {
+    console.error("Auth compatibility issue detected", diagnostic);
+    renderAuthCompatibilityFallback(reactRoot, diagnostic);
+  });
+}
+
 async function boot(): Promise<void> {
   const container = document.getElementById("root");
   if (!container) return;
@@ -123,41 +210,12 @@ async function boot(): Promise<void> {
   // Apply saved theme before rendering to prevent flash
   initTheme();
 
-  const { convexUrl, clerkPublishableKey } = await loadPublicRuntimeConfigAsync();
+  const { convexUrl, clerkPublishableKey, enableVercelAnalytics } = await loadPublicRuntimeConfigAsync();
   const convexClient = getOrCreateConvexClient(convexUrl);
   const reactRoot = getOrCreateReactRoot(container);
 
-  reactRoot.render(
-    <>
-    <Analytics />
-    <ClerkProvider
-      publishableKey={clerkPublishableKey}
-      appearance={{
-        variables: {
-          colorPrimary: "#4D76FF",
-          colorBackground: "#1A1D21",
-          colorText: "#EEEFF1",
-          colorInputBackground: "#242529",
-          colorInputText: "#EEEFF1",
-          borderRadius: "10px",
-        },
-      }}
-    >
-      <SignedOut>
-        <div style={{ maxWidth: 460, margin: "40px auto" }}>
-          <SignIn />
-        </div>
-      </SignedOut>
-      <SignedIn>
-        <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
-          <ConvexRuntimeBoundary>
-            <InternalAccessGate />
-          </ConvexRuntimeBoundary>
-        </ConvexProviderWithClerk>
-      </SignedIn>
-    </ClerkProvider>
-    </>,
-  );
+  setupAuthDiagnostics(reactRoot);
+  renderMainApp(reactRoot, convexClient, clerkPublishableKey, enableVercelAnalytics);
 }
 
 void boot().catch((error: unknown) => {
