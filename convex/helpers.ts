@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
 
 type AuthCtx = QueryCtx | MutationCtx | ActionCtx;
@@ -46,6 +47,6 @@ export async function getUser(ctx: AuthCtx): Promise<AuthUser | null> {
 
 export async function requireUser(ctx: AuthCtx): Promise<AuthUser> {
   const user = await getUser(ctx);
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new ConvexError("Not authenticated");
   return user;
 }

@@ -1,4 +1,5 @@
 import { useAction } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useEffect, useRef, useState } from "react";
 
 import { api } from "../../../convex/_generated/api";
@@ -92,7 +93,12 @@ export function useTranslate(
       })
       .catch((err: unknown) => {
         if (request.requestId !== requestIdRef.current) return;
-        const message = err instanceof Error ? err.message : "Translation failed";
+        const message =
+          err instanceof ConvexError
+            ? (err.data as string)
+            : err instanceof Error
+              ? err.message
+              : "Translation failed";
         setError(message);
       })
       .finally(() => {

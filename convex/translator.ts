@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { makeFunctionReference } from "convex/server";
 import { MAX_TEXT_BYTES } from "../src/shared/constants.ts";
 import { action } from "./_generated/server";
@@ -54,15 +54,15 @@ export const translate = action({
     targetLang: v.string(),
   },
   handler: async (ctx, args) => {
-    if (!args.text.trim()) throw new Error("Text must not be empty");
+    if (!args.text.trim()) throw new ConvexError("Text must not be empty");
     if (new TextEncoder().encode(args.text).length > MAX_TEXT_BYTES) {
-      throw new Error("Text exceeds maximum length of 128,000 bytes");
+      throw new ConvexError("Text exceeds maximum length of 128,000 bytes");
     }
 
     const user = await requireUser(ctx);
     const retryAfterMs = consumeTranslationToken(user.id);
     if (retryAfterMs !== null) {
-      throw new Error(`Rate limit exceeded. Try again in ${Math.ceil(retryAfterMs / 1000)}s`);
+      throw new ConvexError(`Rate limit exceeded. Try again in ${Math.ceil(retryAfterMs / 1000)}s`);
     }
 
     const body: {
@@ -93,23 +93,23 @@ export const translate = action({
         signal: AbortSignal.timeout(5000),
       });
     } catch {
-      throw new Error("Translation service unavailable");
+      throw new ConvexError("Translation service unavailable");
     }
 
     if (!response.ok) {
       const mapped = mapDeepLError(response.status);
-      throw new Error(mapped.message);
+      throw new ConvexError(mapped.message);
     }
 
     const data = await response.json() as {
       translations: Array<{ detected_source_language: string; text: string }>;
     };
     if (!Array.isArray(data.translations) || data.translations.length === 0) {
-      throw new Error("Translation service returned an empty result");
+      throw new ConvexError("Translation service returned an empty result");
     }
     const first = data.translations[0];
     if (!first?.text || !first?.detected_source_language) {
-      throw new Error("Translation service returned an empty result");
+      throw new ConvexError("Translation service returned an empty result");
     }
     const translatedText = first.text;
     const detectedSourceLang = first.detected_source_language;
