@@ -5,7 +5,12 @@ import { action } from "./_generated/server";
 import { requireUser } from "./helpers";
 import { mapDeepLError } from "./lib/errors";
 
-const DEEPL_URL = "https://api-free.deepl.com/v2/translate";
+// Free plan: api-free.deepl.com (500k chars/month, key ends in :fx)
+// Pro plan:  api.deepl.com      (set DEEPL_API_URL in Convex env vars)
+function getDeepLUrl(): string {
+  const base = process.env.DEEPL_API_URL ?? "https://api-free.deepl.com";
+  return `${base}/v2/translate`;
+}
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 20;
 const statsRecordMutationRef = makeFunctionReference<"mutation">("stats:record");
@@ -79,11 +84,11 @@ export const translate = action({
     if (args.sourceLang && args.sourceLang !== "auto") body.source_lang = args.sourceLang;
 
     const key = process.env.DEEPL_API_KEY;
-    if (!key) throw new Error("DEEPL_API_KEY is not configured in Convex env");
+    if (!key) throw new ConvexError("DEEPL_API_KEY is not configured");
 
     let response: Response;
     try {
-      response = await fetch(DEEPL_URL, {
+      response = await fetch(getDeepLUrl(), {
         method: "POST",
         headers: {
           Authorization: `DeepL-Auth-Key ${key}`,
