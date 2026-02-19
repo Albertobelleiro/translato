@@ -3,14 +3,9 @@ import { makeFunctionReference } from "convex/server";
 import { MAX_TEXT_BYTES } from "../src/shared/constants.ts";
 import { action } from "./_generated/server";
 import { requireUser } from "./helpers";
-import { mapDeepLError } from "./lib/errors";
+import { fromAzureLang, mapAzureError, toAzureLang } from "./lib/azure";
 
-// Free plan: api-free.deepl.com (500k chars/month, key ends in :fx)
-// Pro plan:  api.deepl.com      (set DEEPL_API_URL in Convex env vars)
-function getDeepLUrl(): string {
-  const base = process.env.DEEPL_API_URL ?? "https://api-free.deepl.com";
-  return `${base}/v2/translate`;
-}
+const AZURE_URL = "https://api.cognitive.microsofttranslator.com/translate";
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 20;
 const statsRecordMutationRef = makeFunctionReference<"mutation">("stats:record");
@@ -70,31 +65,30 @@ export const translate = action({
       throw new ConvexError(`Rate limit exceeded. Try again in ${Math.ceil(retryAfterMs / 1000)}s`);
     }
 
-    const body: {
-      text: string[];
-      target_lang: string;
-      source_lang?: string;
-      model_type: string;
-    } = {
-      text: [args.text],
-      target_lang: args.targetLang,
-      model_type: "latency_optimized",
-    };
+    const key = process.env.AZURE_TRANSLATOR_KEY;
+    if (!key) throw new ConvexError("AZURE_TRANSLATOR_KEY is not configured");
 
-    if (args.sourceLang && args.sourceLang !== "auto") body.source_lang = args.sourceLang;
+    const region = process.env.AZURE_TRANSLATOR_REGION ?? "global";
+    const azureTarget = toAzureLang(args.targetLang);
+    const azureSource = args.sourceLang && args.sourceLang !== "auto"
+      ? toAzureLang(args.sourceLang)
+      : undefined;
 
-    const key = process.env.DEEPL_API_KEY;
-    if (!key) throw new ConvexError("DEEPL_API_KEY is not configured");
+    const url = new URL(AZURE_URL);
+    url.searchParams.set("api-version", "3.0");
+    url.searchParams.append("to", azureTarget);
+    if (azureSource) url.searchParams.set("from", azureSource);
 
     let response: Response;
     try {
-      response = await fetch(getDeepLUrl(), {
+      response = await fetch(url.toString(), {
         method: "POST",
         headers: {
-          Authorization: `DeepL-Auth-Key ${key}`,
+          "Ocp-Apim-Subscription-Key": key,
+          "Ocp-Apim-Subscription-Region": region,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify([{ text: args.text }]),
         signal: AbortSignal.timeout(5000),
       });
     } catch {
@@ -102,22 +96,24 @@ export const translate = action({
     }
 
     if (!response.ok) {
-      const mapped = mapDeepLError(response.status);
-      throw new ConvexError(mapped.message);
+      throw new ConvexError(mapAzureError(response.status));
     }
 
-    const data = await response.json() as {
-      translations: Array<{ detected_source_language: string; text: string }>;
-    };
-    if (!Array.isArray(data.translations) || data.translations.length === 0) {
+    type AzureResponse = Array<{
+      detectedLanguage?: { language: string; score: number };
+      translations: Array<{ text: string; to: string }>;
+    }>;
+
+    const data = await response.json() as AzureResponse;
+    const first = data[0];
+    if (!first?.translations?.[0]?.text) {
       throw new ConvexError("Translation service returned an empty result");
     }
-    const first = data.translations[0];
-    if (!first?.text || !first?.detected_source_language) {
-      throw new ConvexError("Translation service returned an empty result");
-    }
-    const translatedText = first.text;
-    const detectedSourceLang = first.detected_source_language;
+
+    const translatedText = first.translations[0].text;
+    const detectedSourceLang = first.detectedLanguage
+      ? fromAzureLang(first.detectedLanguage.language)
+      : (args.sourceLang ?? "");
 
     await ctx.runMutation(statsRecordMutationRef, {
       characterCount: args.text.length,
